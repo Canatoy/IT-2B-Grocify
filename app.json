@@ -21,7 +21,7 @@
       "package": "com.anonymous.IT2BGrocify"
     },
     "web": {
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

@@ -1,12 +1,12 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-const PlannerScreen = () => {
+const Planner = () => {
   return (
     <View>
-      <Text>PlannerScreen</Text>
+      <Text>Planner </Text>
     </View>
   );
 };
 
-export default PlannerScreen;
+export default Planner;
