@@ -1,51 +1,157 @@
 import { useAuth } from "@clerk/expo";
-import { Redirect } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useColorScheme } from "nativewind";
+import { Redirect, Tabs } from "expo-router";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors, radius, typography } from "../../constants/theme";
+
+type TabRoute = { key: string; name: string };
+type TabBarProps = {
+  state: { routes: TabRoute[]; index: number };
+  descriptors: Record<string, { options: { tabBarLabel?: string; title?: string } }>;
+  navigation: { emit: (e: object) => { defaultPrevented: boolean }; navigate: (n: string) => void };
+};
+type IconName = React.ComponentProps<typeof Ionicons>["name"];
+
+function getIcon(routeName: string, focused: boolean): IconName {
+  if (routeName === "index")    return focused ? "list"       : "list-outline";
+  if (routeName === "planner")  return focused ? "add-circle" : "add-circle-outline";
+  if (routeName === "insights") return focused ? "bar-chart"  : "bar-chart-outline";
+  return "ellipse-outline";
+}
+
+function getLabel(routeName: string, title?: string): string {
+  if (title) return title;
+  if (routeName === "index") return "List";
+  return routeName.charAt(0).toUpperCase() + routeName.slice(1);
+}
+
+function TabBar({ state, descriptors, navigation }: TabBarProps) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.wrapper, { paddingBottom: insets.bottom + 10 }]}>
+      {/* ✅ teal gradient pill, same structure as your original */}
+      <LinearGradient
+        colors={["#008296", "#7BC9BE"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.pill}
+      >
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+          const label = getLabel(route.name, options.title);
+          const iconName = getIcon(route.name, isFocused);
+
+          const onPress = () => {
+            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={label}
+            >
+              {isFocused ? (
+                // ✅ white active pill, same sizing/structure as your original
+                <View style={styles.activeTab}>
+                  <Ionicons name={iconName} size={20} color={colors.teal} />
+                  <Text style={styles.activeLabel}>{label}</Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveTab}>
+                  <Ionicons name={iconName} size={20} color={colors.white} />
+                  <Text style={styles.inactiveLabel}>{label}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </LinearGradient>
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const { isSignedIn, isLoaded } = useAuth();
-
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const tabTintColor = isDark ? "hsl(142 70% 54%)" : "hsl(147 75% 33%)";
-
-  if (!isLoaded) {
-    return null;
-  }
-
-  if (!isSignedIn) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
+  if (!isLoaded) return null;
+  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
   return (
-    <NativeTabs tintColor={tabTintColor}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>List</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{
-            default: "list.bullet.clipboard",
-            selected: "list.bullet.clipboard.fill",
-          }}
-          md="list"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="planner">
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "plus.circle", selected: "plus.circle.fill" }}
-          md="add"
-        />
-        <NativeTabs.Trigger.Label>Planner</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="insights">
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
-          md="analytics"
-        />
-        <NativeTabs.Trigger.Label>Insights</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index"    options={{ title: "List" }} />
+      <Tabs.Screen name="planner"  options={{ title: "Planner" }} />
+      <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingTop: 8,
+  },
+  // ✅ same pill shape/sizing, just LinearGradient instead of white background
+  pill: {
+    flexDirection: "row",
+    borderRadius: radius.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  tabItem: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeTab: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderRadius: radius.pill,
+    paddingHorizontal: 22,
+    paddingVertical: 8,
+    gap: 3,
+    minWidth: 88,
+  },
+  activeLabel: {
+    fontSize: 10,
+    fontWeight: typography.semibold,
+    color: colors.teal,
+    letterSpacing: 0.3,
+  },
+  inactiveTab: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 3,
+    minWidth: 72,
+  },
+  inactiveLabel: {
+    fontSize: 10,
+    fontWeight: typography.semibold,
+    color: colors.white,
+    letterSpacing: 0.3,
+  },
+});
