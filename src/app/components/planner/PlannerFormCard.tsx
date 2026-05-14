@@ -25,7 +25,7 @@ const CATEGORIES: { id: string; name: GroceryCategory; emoji: string; grad: read
 ];
 
 const FREQUENT_ITEMS = [
-  { id: "1", name: "Avocado", category: "Produce" as GroceryCategory, emoji: "🥑" },
+  {},
   { id: "2", name: "Milk",    category: "Dairy"   as GroceryCategory, emoji: "🥛" },
   { id: "3", name: "Bread",   category: "Bakery"  as GroceryCategory, emoji: "🍞" },
   { id: "4", name: "Eggs",    category: "Dairy"   as GroceryCategory, emoji: "🥚" },

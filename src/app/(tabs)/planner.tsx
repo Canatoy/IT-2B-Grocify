@@ -27,6 +27,7 @@ import {
 } from "../../constants/theme";
 import { useGroceryStore, GroceryCategory, GroceryPriority } from "@/store/grocery-store";
 
+
 // ─── Image assets ─────────────────────────────────────────────────────────────
 
 const groceryBanner = require("../../../assets/images/grocery-banner.jpg");
@@ -45,20 +46,22 @@ const CATEGORY_IMAGES: Record<string, any> = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 3) / 4;
+// outer margins (lg*2) + card inner padding both sides (lg*2) + 3 gaps (sm*3)
+const CARD_PADDING = 16; // categoriesCard padding
+const CARD_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - CARD_PADDING * 2 - spacing.sm * 3 - 2.5 * 2 * 4) / 4;
 
 const SCROLL_BOTTOM_PADDING = 120;
 const MODAL_BOTTOM_PADDING = 44;
 
 export const CATEGORIES = [
-  { id: "1", name: "Fruits"     },
-  { id: "2", name: "Vegetables" },
-  { id: "3", name: "Dairy"      },
-  { id: "4", name: "Snacks"     },
-  { id: "5", name: "Pantry"     },
-  { id: "6", name: "Grain"      },
-  { id: "7", name: "Meat"       },
-  { id: "8", name: "Seafood"    },
+  { id: "1", name: "Fruits",     overlay: "rgba(180,30,30,0.72)"   },
+  { id: "2", name: "Vegetables", overlay: "rgba(45,110,45,0.72)"   },
+  { id: "3", name: "Dairy",      overlay: "rgba(200,175,100,0.72)" },
+  { id: "4", name: "Snacks",     overlay: "rgba(160,80,20,0.72)"   },
+  { id: "5", name: "Pantry",     overlay: "rgba(140,90,40,0.72)"   },
+  { id: "6", name: "Grain",      overlay: "rgba(190,150,60,0.72)"  },
+  { id: "7", name: "Meat",       overlay: "rgba(160,40,40,0.72)"   },
+  { id: "8", name: "Seafood",    overlay: "rgba(30,100,160,0.72)"  },
 ];
 
 export const FREQUENT_ITEMS = [
@@ -149,6 +152,7 @@ export default function PlannerScreen() {
   const [itemName,          setItemName]          = useState("");
   const [quantity,          setQuantity]          = useState("1");
   const [quantityError,     setQuantityError]     = useState("");
+  const [estimatedPrice,    setEstimatedPrice]    = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState<GroceryCategory | "">("");
   const [selectedPriority,  setSelectedPriority]  = useState<GroceryPriority>("low");
   const [showFrequent,      setShowFrequent]      = useState(false);
@@ -161,6 +165,14 @@ export default function PlannerScreen() {
   const addingRef = useRef(false);
 
   const displayedCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4);
+
+  // ── Derived: total price calculation ──────────────────────────────────────
+  const parsedPrice = parseFloat(estimatedPrice);
+  const parsedQty   = parseInt(quantity, 10);
+  const totalPrice  =
+    !isNaN(parsedPrice) && parsedPrice > 0 && !isNaN(parsedQty) && parsedQty > 0
+      ? parsedPrice * parsedQty
+      : null;
 
   const showToast = useCallback((name: string) => {
     setToastItemName(name);
@@ -192,15 +204,26 @@ export default function PlannerScreen() {
       return;
     }
 
+    const price      = estimatedPrice ? parseFloat(estimatedPrice) : undefined;
+    const calcTotal  = price && qty ? price * qty : undefined;
+
     addingRef.current = true;
     setLoading(true);
     try {
       const name = itemName.trim();
-      await addItem({ name, category: selectedCategory, quantity: qty, priority: selectedPriority });
+      await addItem({
+        name,
+        category: selectedCategory,
+        quantity: qty,
+        priority: selectedPriority,
+        estimatedPrice: price,
+        totalPrice: calcTotal,
+      });
       showToast(name);
       setItemName("");
       setQuantity("1");
       setQuantityError("");
+      setEstimatedPrice("");
       setSelectedCategory("");
       setSelectedPriority("low");
     } catch (err) {
@@ -262,20 +285,21 @@ export default function PlannerScreen() {
               <Text style={styles.heroTitle}>Plan smarter, shop calmer.</Text>
               <View style={styles.statBoxRow}>
                 {[
-                  { value: pendingCount,      label: "Pending" },
-                  { value: highPriorityCount, label: "High Priority" },
-                  { value: totalUnits,        label: "Total Units" },
+                  { value: pendingCount,      label: "PENDING"        },
+                  { value: highPriorityCount, label: "HIGH PRIORITY"  },
+                  { value: totalUnits,        label: "TOTAL UNITS"    },
                 ].map((s) => (
-                  <LinearGradient
-                    key={s.label}
-                    colors={["#7BC9BE", "#009aad"]}
-                    style={styles.statBox}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={styles.statBoxValue}>{s.value}</Text>
-                    <Text style={styles.statBoxLabel}>{s.label}</Text>
-                  </LinearGradient>
+                  <View key={s.label} style={styles.statBox}>
+                    <LinearGradient
+                      colors={["#5BB8B0", "#007A8A"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.statBoxGradient}
+                    >
+                      <Text style={styles.statBoxLabel}>{s.label}</Text>
+                      <Text style={styles.statBoxValue}>{s.value}</Text>
+                    </LinearGradient>
+                  </View>
                 ))}
               </View>
             </View>
@@ -289,80 +313,77 @@ export default function PlannerScreen() {
               style={styles.frequentBannerWrapper}
             >
               <ImageBackground
-                source={groceryBanner}
-                style={styles.frequentBanner}
-                imageStyle={styles.frequentBannerImage}
-                resizeMode="cover"
-              >
-                {/* dark overlay so text stays readable over any photo */}
-                <View style={styles.bannerOverlay} />
-                <View style={styles.bannerContent}>
-                  <Text style={styles.frequentTitle}>Frequently bought items</Text>
-                  <Text style={styles.frequentSub}>Quickly add items you buy often.</Text>
-                  <View style={styles.viewBtn}>
-                    <Text style={styles.viewBtnText}>View</Text>
-                    <Ionicons name="arrow-forward" size={12} color={colors.white} style={{ marginLeft: 4 }} />
-                  </View>
-                </View>
-              </ImageBackground>
+  source={groceryBanner}
+  style={styles.frequentBanner}
+  imageStyle={{ width: "100%", height: "100%" }}
+  resizeMode="cover"
+>
+ 
+<LinearGradient
+  colors={["rgba(0,130,150,0.37)", "rgba(123,201,190,0)"]}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 0 }}
+  style={StyleSheet.absoluteFillObject}
+/>
+  <View style={styles.bannerContent}>
+    <Text style={styles.frequentTitle}>{"Frequently bought\nitems"}</Text>
+<Text style={styles.frequentSub}>{"Quickly add items you buy\noften."}</Text>
+    <View style={styles.viewBtnRow}>
+      <View style={styles.viewBtn}>
+        <Text style={styles.viewBtnText}>View</Text>
+      </View>
+      <View style={styles.viewBtnCircle}>
+        <Ionicons name="arrow-forward" size={12} color={colors.teal} />
+      </View>
+    </View>
+  </View>
+</ImageBackground>
             </TouchableOpacity>
 
             {/* ── CATEGORIES ───────────────────────── */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Categories</Text>
-                <TouchableOpacity
-                  onPress={() => setShowAllCategories(!showAllCategories)}
-                  style={styles.seeAllBtn}
-                  accessibilityLabel={showAllCategories ? "Show fewer categories" : "See all categories"}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.seeAll}>{showAllCategories ? "Show less" : "See all"}</Text>
-                  <Ionicons name={showAllCategories ? "chevron-up" : "chevron-down"} size={12} color="rgba(255,255,255,0.7)" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.categoryGrid}>
-                {displayedCategories.map((cat) => {
-                  const isSelected = selectedCategory === cat.name;
-                  const catImage = CATEGORY_IMAGES[cat.name];
-
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setSelectedCategory(cat.name as GroceryCategory)}
-                      activeOpacity={0.82}
-                      style={[
-                        styles.categoryCardWrapper,
-                        { width: CARD_SIZE, height: CARD_SIZE },
-                        isSelected && styles.categorySelectedWrapper,
-                      ]}
-                      accessibilityLabel={`${cat.name} category${isSelected ? ", selected" : ""}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isSelected }}
-                    >
-                      <ImageBackground
-                        source={catImage}
-                        style={styles.categoryImageBg}
-                        imageStyle={styles.categoryImageStyle}
-                        resizeMode="cover"
-                      >
-                        {/* dark tint so label is always readable */}
-                        <View style={styles.categoryOverlay} />
-
-                        {isSelected && (
-                          <View style={styles.categoryCheckmark}>
-                            <Ionicons name="checkmark" size={10} color={colors.white} />
-                          </View>
-                        )}
-
-                        <Text style={styles.categoryName}>{cat.name}</Text>
-                      </ImageBackground>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+<View style={styles.categoriesCard}>
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>Categories</Text>
+    <TouchableOpacity
+      onPress={() => setShowAllCategories(!showAllCategories)}
+      style={styles.seeAllBtn}
+      accessibilityLabel={showAllCategories ? "Show fewer categories" : "See all categories"}
+      accessibilityRole="button"
+    >
+      <Text style={styles.seeAll}>{showAllCategories ? "Show less" : "See all"}</Text>
+      <Ionicons
+        name={showAllCategories ? "chevron-up" : "chevron-down"}
+        size={12}
+        color="rgba(255,255,255,0.8)"
+      />
+    </TouchableOpacity>
+  </View>
+  <View style={styles.categoryGrid}>
+    {displayedCategories.map((cat) => {
+      const isSelected = selectedCategory === cat.name;
+      const catImage = CATEGORY_IMAGES[cat.name];
+      return (
+        <TouchableOpacity
+          key={cat.id}
+          onPress={() => setSelectedCategory(cat.name as GroceryCategory)}
+          activeOpacity={0.82}
+          style={[styles.categoryCardWrapper, isSelected && styles.categorySelectedWrapper]}
+          accessibilityLabel={`${cat.name} category${isSelected ? ", selected" : ""}`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+        >
+          <ImageBackground source={catImage} style={styles.categoryTopImage} resizeMode="cover">
+            {isSelected && <View style={styles.categorySelectedOverlay} />}
+            <LinearGradient colors={["transparent", "rgba(0,0,0,0.82)"]} style={styles.categoryGradient}>
+              <Text style={styles.categoryName}>{cat.name}</Text>
+              {isSelected && <Ionicons name="checkmark-circle" size={12} color={colors.white} />}
+            </LinearGradient>
+          </ImageBackground>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+</View>
 
             {/* ── BUILD YOUR LIST FORM ─────────────── */}
             <View style={styles.section}>
@@ -378,7 +399,7 @@ export default function PlannerScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Ex: Squash"
-                    placeholderTextColor={colors.tealLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     value={itemName}
                     onChangeText={setItemName}
                     returnKeyType="next"
@@ -391,7 +412,7 @@ export default function PlannerScreen() {
                       accessibilityLabel="Clear item name"
                       accessibilityRole="button"
                     >
-                      <Ionicons name="close-circle" size={16} color={colors.tealLight} />
+                      <Ionicons name="close-circle" size={16} color="rgba(0,0,0,0.3)" />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -403,11 +424,11 @@ export default function PlannerScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="E.g. 3"
-                    placeholderTextColor={colors.tealLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     keyboardType="numeric"
                     value={quantity}
                     onChangeText={handleQuantityChange}
-                    returnKeyType="done"
+                    returnKeyType="next"
                     accessibilityLabel="Quantity"
                   />
                 </View>
@@ -415,11 +436,50 @@ export default function PlannerScreen() {
                   <Text style={styles.inputError}>{quantityError}</Text>
                 ) : null}
 
+                {/* Estimated Price */}
+                <Text style={styles.inputLabel}>Estimated price</Text>
+                <View style={styles.inputRow}>
+                  <Ionicons name="cash-outline" size={16} color={colors.teal} style={{ marginRight: spacing.sm }} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: 5.00"
+                    placeholderTextColor="rgba(0,0,0,0.35)"
+                    keyboardType="decimal-pad"
+                    value={estimatedPrice}
+                    onChangeText={setEstimatedPrice}
+                    returnKeyType="done"
+                    accessibilityLabel="Estimated price"
+                  />
+                  {estimatedPrice.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setEstimatedPrice("")}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel="Clear estimated price"
+                      accessibilityRole="button"
+                    >
+                      <Ionicons name="close-circle" size={16} color="rgba(0,0,0,0.3)" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Total Price Preview */}
+                {totalPrice !== null && (
+                  <View style={styles.totalPreviewRow}>
+                    <Ionicons name="calculator-outline" size={14} color="rgba(255,255,255,0.75)" />
+                    <Text style={styles.totalPreviewText}>
+                      Estimated total:{" "}
+                      <Text style={styles.totalPreviewAmount}>
+                        ₱{totalPrice.toFixed(2)}
+                      </Text>
+                    </Text>
+                  </View>
+                )}
+
                 {/* Priority */}
                 <Text style={styles.inputLabel}>Priority</Text>
                 <View style={styles.priorityRow}>
                   {(["low", "medium", "high"] as GroceryPriority[]).map((p) => {
-                    const cfg = PRIORITY_CONFIG[p];
+                    const cfg      = PRIORITY_CONFIG[p];
                     const isActive = selectedPriority === p;
                     return (
                       <TouchableOpacity
@@ -469,10 +529,16 @@ export default function PlannerScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={styles.addBtnGradient}
                   >
-                    <Ionicons name={loading ? "hourglass-outline" : "add-circle-outline"} size={20} color={colors.white} style={{ marginRight: 6 }} />
+                    <Ionicons
+                      name={loading ? "hourglass-outline" : "add-circle-outline"}
+                      size={20}
+                      color={colors.white}
+                      style={{ marginRight: 6 }}
+                    />
                     <Text style={styles.addBtnText}>{loading ? "Adding…" : "Add to List"}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
+
               </View>
             </View>
           </ScrollView>
@@ -565,7 +631,7 @@ const styles = StyleSheet.create({
   },
   toastBody: { flex: 1 },
   toastTitle: { color: colors.white, fontWeight: typography.bold, fontSize: typography.base },
-  toastSub: { color: "rgba(255,255,255,0.55)", fontSize: typography.xs, marginTop: 2 },
+  toastSub:   { color: "rgba(255,255,255,0.55)", fontSize: typography.xs, marginTop: 2 },
 
   // ── Hero ──────────────────────────────────────────────────
   heroCard: {
@@ -577,130 +643,196 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: typography.xs,
-    color: colors.textMuted,
+    color: "#000000",
     letterSpacing: typography.wide,
-    fontWeight: typography.semibold,
+    fontWeight: "900",
     textTransform: "uppercase",
     marginBottom: spacing.xs,
   },
   heroTitle: {
-    fontSize: typography.xxl,
+    fontSize: 20,
     fontWeight: "900" as const,
     color: colors.teal,
     marginBottom: spacing.md,
+    lineHeight: 26,
   },
-  statBoxRow: { flexDirection: "row", gap: spacing.sm },
+  statBoxRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
   statBox: {
     flex: 1,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-    minHeight: 52,
+    overflow: "hidden",
   },
-  statBoxValue: { fontSize: typography.xl, fontWeight: "900" as const, color: colors.white },
+  statBoxGradient: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    minHeight: 64,
+  },
+  statBoxValue: {
+    fontSize: 26,
+    fontWeight: "900" as const,
+    color: colors.white,
+    lineHeight: 30,
+  },
   statBoxLabel: {
-    fontSize: 9,
-    fontWeight: typography.semibold,
-    color: "rgba(255,255,255,0.8)",
+    fontSize: 8,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.9)",
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    textAlign: "center",
+    letterSpacing: 0.6,
+    textAlign: "left",
   },
 
   // ── Frequent Banner ───────────────────────────────────────
-  // Outer wrapper keeps margin + shadow; ImageBackground is inside
   frequentBannerWrapper: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    borderRadius: radius.xl,
-    overflow: "hidden",      // clips the image to the rounded corners
-    ...shadows.card,
-  },
+  marginHorizontal: spacing.lg,
+  marginBottom: spacing.lg,
+  borderRadius: radius.xl,
+  overflow: "hidden",
+  borderWidth: 1.5,
+  borderColor: "rgba(255,255,255,0.6)",
+  ...shadows.card,
+  // NO backgroundColor here
+},
   frequentBanner: {
-    minHeight: 120,
-    justifyContent: "center",
-  },
-  frequentBannerImage: {
-    // Image fills the card naturally via resizeMode="cover"
-    // borderRadius is NOT set here — overflow:hidden on wrapper handles it
-  },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 90, 100, 0.55)",   // teal-tinted dark overlay
-  },
-  bannerContent: {
-    padding: spacing.lg,
-    maxWidth: "65%",          // keeps text from overlapping the right side of the photo
-  },
-  frequentTitle: { color: colors.white, fontWeight: typography.bold, fontSize: typography.lg },
-  frequentSub: { color: "rgba(255,255,255,0.75)", fontSize: typography.sm, marginTop: 3, marginBottom: spacing.md },
-  viewBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  viewBtnText: { color: colors.white, fontWeight: typography.bold, fontSize: typography.sm },
+  height: 155,
+  flexDirection: "row",
+},
+  frequentBannerImage: {},
 
-  // ── Section ───────────────────────────────────────────────
-  section: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
-  sectionTitle: { color: colors.white, fontWeight: typography.bold, fontSize: typography.lg },
+  bannerContent: {
+  flex: 1,
+  padding: spacing.lg,
+  justifyContent: "flex-start",  // change from flex-end
+},
+  frequentTitle: {
+  color: colors.white,
+  fontWeight: "900",
+  fontSize: 19,
+  lineHeight: 22,
+  marginBottom: 1,
+},
+frequentSub: {
+  color: "#008296",
+  fontWeight: "600",
+  fontSize: 12,
+  marginBottom: 21,
+},
+  viewBtnRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: spacing.sm,
+  marginTop: "auto",   
+},
+  viewBtn: {
+  backgroundColor: colors.teal,
+  paddingHorizontal: spacing.md,
+  paddingVertical: 8,
+  borderRadius: radius.pill,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: spacing.sm,
+},
+  viewBtnText: { color: colors.white, fontWeight: typography.bold, fontSize: typography.sm },
+  viewBtnCircle: {
+  width: 30,
+  height: 30,
+  borderRadius: 16,
+  backgroundColor: colors.white,
+  alignItems: "center",
+  justifyContent: "center",
+},
+categoriesCard: {
+  backgroundColor: "rgba(0,0,0,0.12)",
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.3)",
+  marginHorizontal: spacing.lg,
+  marginBottom: spacing.lg,
+  borderRadius: radius.xl,
+  paddingTop: spacing.lg,
+  paddingHorizontal: spacing.lg,
+  paddingBottom: spacing.lg,
+},
+ sectionHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: spacing.md,
+},
+
+  sectionTitle: {
+  color: colors.white,
+  fontWeight: typography.bold,
+  fontSize: typography.lg,
+},
   seeAllBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeAll: { color: "rgba(255,255,255,0.7)", fontSize: typography.sm, fontWeight: typography.medium },
+  seeAll: {
+  color: "rgba(255,255,255,0.85)",
+  fontSize: typography.sm,
+  fontWeight: "800",
+},
 
   // ── Category Grid ─────────────────────────────────────────
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  categoryGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: spacing.sm,
+},
+
   categoryCardWrapper: {
-    borderRadius: radius.md,
-    overflow: "hidden",       // clips photo + overlay to rounded corners
-    borderWidth: 2.5,
-    borderColor: "transparent",
-    ...shadows.card,
-  },
-  categorySelectedWrapper: { borderColor: colors.white },
-  categoryImageBg: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 8,
-  },
-  categoryImageStyle: {
-    // resizeMode is set on the component; no extra style needed here
-  },
-  categoryOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.30)",   // subtle tint — lets the photo show through
-  },
+  width: "23%",
+  borderRadius: radius.lg,
+  overflow: "hidden",
+  ...shadows.card,
+},
+
+  categorySelectedWrapper: {
+  opacity: 1,            
+},
+  categoryTopImage: {
+  width: "100%",
+  height: CARD_SIZE * 1.45,
+  position: "relative",
+},
+  categoryImageBg: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 8 },
+  categoryImageStyle: {},
+  categoryOverlay: { ...StyleSheet.absoluteFillObject },
   categoryCheckmark: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    position: "absolute", top: 5, right: 5,
+    width: 16, height: 16, borderRadius: 8,
     backgroundColor: "rgba(255,255,255,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
   categoryName: {
     color: colors.white,
-    fontWeight: typography.bold,
-    fontSize: 10,
+    fontWeight: "900",
+    fontSize: 11,
     textAlign: "center",
-    zIndex: 1,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
+  categoryGradient: {
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  height: "70%",
+  justifyContent: "flex-end",
+  alignItems: "center",        
+  flexDirection: "column",    
+  paddingBottom: 8,
+},
+categorySelectedOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  borderWidth: 3,
+  borderColor: colors.teal,
+  borderRadius: radius.lg,
+},
+
+  // ── Section (for Build Your List) ─────────────────────────
+  section: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
 
   // ── Form Card ─────────────────────────────────────────────
   buildTitle: {
@@ -710,14 +842,19 @@ const styles = StyleSheet.create({
     letterSpacing: typography.wide,
     textTransform: "uppercase",
   },
-  buildSub: { color: "rgba(255,255,255,0.6)", fontSize: typography.sm, marginTop: 4, marginBottom: spacing.md },
-  formCard: {
-    backgroundColor: "rgba(0,80,96,0.35)",
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
+  buildSub: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: typography.sm,
+    marginTop: 4,
+    marginBottom: spacing.md,
   },
+  formCard: {
+  backgroundColor: "rgba(0,80,96,0.35)",
+  borderRadius: radius.xl,
+  padding: spacing.lg,
+  borderWidth: 1.5,
+  borderColor: "rgba(255,255,255,0.5)",
+},
   inputLabel: {
     color: "rgba(255,255,255,0.85)",
     fontWeight: typography.semibold,
@@ -725,17 +862,50 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   inputRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "rgba(198,231,236,0.75)",
+borderColor: "rgba(198,231,236,0.8)",
+  borderRadius: radius.md,
+  paddingHorizontal: spacing.md,
+  marginBottom: spacing.sm,
+  height: 46,
+  borderWidth: 1,
+},
+  inputRowError: { borderWidth: 1.5, borderColor: "#E74C3C" },
+  inputError: {
+    color: "#FFB3A7",
+    fontSize: typography.xs,
+    marginBottom: spacing.md,
+    marginLeft: 4,
+  },
+  input: { flex: 1, height: 46, color: "#006070", fontSize: typography.base },
+
+  // ── Total Price Preview ───────────────────────────────────
+  totalPreviewRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
-    height: 46,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  inputRowError: { borderWidth: 1.5, borderColor: "#E74C3C" },
-  inputError: { color: "#FFB3A7", fontSize: typography.xs, marginBottom: spacing.md, marginLeft: 4 },
-  input: { flex: 1, height: 46, color: colors.tealDark, fontSize: typography.base },
+  totalPreviewText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: typography.sm,
+    fontWeight: typography.medium,
+  },
+  totalPreviewAmount: {
+    color: colors.white,
+    fontWeight: typography.bold,
+    fontSize: typography.sm,
+  },
+
+  // ── Priority ──────────────────────────────────────────────
   priorityRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   priorityBtn: {
     flex: 1,
@@ -750,7 +920,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   priorityDot: { width: 7, height: 7, borderRadius: 3.5 },
-  priorityBtnText: { color: "rgba(255,255,255,0.65)", fontSize: typography.sm, fontWeight: typography.medium },
+  priorityBtnText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: typography.sm,
+    fontWeight: typography.medium,
+  },
+
+  // ── Category indicator ────────────────────────────────────
   selectedCatRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -762,7 +938,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)",
   },
   selectedCatRowActive: { backgroundColor: "rgba(46,204,113,0.1)" },
-  selectedCatText: { color: "rgba(255,255,255,0.45)", fontSize: typography.xs, fontWeight: typography.medium, flex: 1 },
+  selectedCatText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: typography.xs,
+    fontWeight: typography.medium,
+    flex: 1,
+  },
+
+  // ── Add Button ────────────────────────────────────────────
   addBtn: { borderRadius: radius.md, overflow: "hidden" },
   addBtnDisabled: { opacity: 0.55 },
   addBtnGradient: {
@@ -782,9 +965,25 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     paddingBottom: MODAL_BOTTOM_PADDING,
   },
-  modalHandle: { width: 40, height: 4, backgroundColor: "#E0E0E0", borderRadius: 2, alignSelf: "center", marginBottom: spacing.lg },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  modalTitle: { fontSize: typography.xl, fontWeight: typography.extrabold, color: colors.textPrimary },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: spacing.lg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: typography.xl,
+    fontWeight: typography.extrabold,
+    color: colors.textPrimary,
+  },
   modalCloseBtn: {
     width: 30,
     height: 30,
@@ -793,7 +992,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modalSub: { color: colors.textSecondary, fontSize: typography.sm, marginBottom: spacing.lg },
+  modalSub: {
+    color: colors.textSecondary,
+    fontSize: typography.sm,
+    marginBottom: spacing.lg,
+  },
   frequentItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -815,8 +1018,16 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   frequentItemEmoji: { fontSize: 26 },
-  frequentItemName: { fontWeight: typography.bold, fontSize: typography.base, color: colors.textPrimary },
-  frequentItemCat: { fontSize: typography.xs, color: colors.textSecondary, marginTop: 2 },
+  frequentItemName: {
+    fontWeight: typography.bold,
+    fontSize: typography.base,
+    color: colors.textPrimary,
+  },
+  frequentItemCat: {
+    fontSize: typography.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   quickAddBtn: {
     flexDirection: "row",
     alignItems: "center",
