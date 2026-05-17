@@ -1,16 +1,21 @@
 import {
-    deleteGroceryItem,
-    setGroceryItemPurchased,
-    updateGroceryItemQuantity,
+  deleteGroceryItem,
+  setGroceryItemPurchased,
+  updateGroceryItemQuantity,
 } from "@/lib/server/db-actions";
 
 export async function PATCH(request: Request, { id }: { id: string }) {
   try {
     const body = await request.json();
 
-    const item = body.quantity
-      ? await updateGroceryItemQuantity(id, body.quantity)
-      : await setGroceryItemPurchased(id, body.purchased ?? true);
+    let item;
+
+    if (body.quantity !== undefined) {
+      // Pass totalPrice so DB can update it if estimatedPrice exists
+      item = await updateGroceryItemQuantity(id, body.quantity, body.totalPrice ?? null);
+    } else {
+      item = await setGroceryItemPurchased(id, body.purchased ?? true);
+    }
 
     if (!item)
       return Response.json({ error: "Item not found." }, { status: 404 });

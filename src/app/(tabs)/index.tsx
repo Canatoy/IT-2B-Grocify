@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,99 +6,144 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  colors,
-  radius,
-  spacing,
-  shadows,
-  typography,
-  priorityColors,
-} from "../../constants/theme";
+import { colors, radius, spacing, shadows, typography } from "../../constants/theme";
 import { useGroceryStore } from "@/store/grocery-store";
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  Fruits: "🍎", Vegetables: "🥦", Dairy: "🧀", Snacks: "🍿",
-  Pantry: "🥫", Grain: "🍞", Meat: "🥩", Seafood: "🐟",
+// ─── Local item images ─────────────────────────────────────────────────────────
+const ITEM_IMAGES: Record<string, any> = {
+  adobo:      require("@/assets/images/items/adobo.jpg"),
+  apple:      require("@/assets/images/items/apple.jpg"),
+  applecider: require("@/assets/images/items/applecider.jpg"),
+  banana:     require("@/assets/images/items/banana.jpg"),
+  barley:     require("@/assets/images/items/barley.jpg"),
+  bread:      require("@/assets/images/items/bread.jpg"),
+  butter:     require("@/assets/images/items/butter.jpg"),
+  cabbage:    require("@/assets/images/items/cabbage.jpg"),
+  carrot:     require("@/assets/images/items/carrot.jpg"),
+  cheese:     require("@/assets/images/items/cheese.jpg"),
+  chicken:    require("@/assets/images/items/chicken.jpg"),
+  chips:      require("@/assets/images/items/chips.jpg"),
+  chocolate:  require("@/assets/images/items/chocolate.jpg"),
+  coke:       require("@/assets/images/items/coke.jpg"),
+  cornflakes: require("@/assets/images/items/cornflakes.jpg"),
+  eggplant:   require("@/assets/images/items/eggplant.jpg"),
+  fish:       require("@/assets/images/items/fish.jpg"),
+  grapes:     require("@/assets/images/items/grapes.jpg"),
+  icecream:   require("@/assets/images/items/icecream.jpg"),
+  lobster:    require("@/assets/images/items/lobster.jpg"),
+  mango:      require("@/assets/images/items/mango.jpg"),
+  milk:       require("@/assets/images/items/milk.jpg"),
+  oat:        require("@/assets/images/items/oat.jpg"),
+  oil:        require("@/assets/images/items/oil.jpg"),
+  okra:       require("@/assets/images/items/okra.jpg"),
+  orange:     require("@/assets/images/items/orange.jpg"),
+  oyster:     require("@/assets/images/items/oyster.jpg"),
+  popcorn:    require("@/assets/images/items/popcorn.jpg"),
+  porkchop:   require("@/assets/images/items/porkchop.jpg"),
+  rice:       require("@/assets/images/items/rice.jpg"),
+  salmon:     require("@/assets/images/items/salmon.jpg"),
+  salt:       require("@/assets/images/items/salt.jpg"),
+  shrimp:     require("@/assets/images/items/shrimp.jpg"),
+  sinigang:   require("@/assets/images/items/sinigang.jpg"),
+  squash:     require("@/assets/images/items/squash.jpg"),
+  steak:      require("@/assets/images/items/steak.jpg"),
+  sugar:      require("@/assets/images/items/sugar.jpg"),
+  vinegar:    require("@/assets/images/items/vinegar.jpg"),
+  wheat:      require("@/assets/images/items/wheat.jpg"),
+  yogurt:     require("@/assets/images/items/yogurt.jpg"),
 };
 
-const CATEGORY_BG: Record<string, [string, string]> = {
-  Fruits:     ["#FFE0D0", "#FFB899"],
-  Vegetables: ["#D8F0DA", "#A8DAB0"],
-  Dairy:      ["#D3EAFD", "#A1CEFC"],
-  Snacks:     ["#FFF4CC", "#FFE082"],
-  Pantry:     ["#EDD9F5", "#D5A8F0"],
-  Grain:      ["#EDE0D4", "#D5B99A"],
-  Meat:       ["#FCE4EC", "#F48FB1"],
-  Seafood:    ["#E0F7FA", "#80DEEA"],
+const getItemImage = (name: string) => {
+  const key = name.toLowerCase().replace(/\s+/g, "");
+  return ITEM_IMAGES[key] ?? null;
 };
 
-const PRIORITY_COLOR: Record<string, string> = {
-  high:   "#FF5252",
-  medium: "#FFB300",
-  low:    "#69F0AE",
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORY_PILL: Record<string, { bg: string; color: string }> = {
+  Fruits:     { bg: "#FFE8D6", color: "#8B3A0F" },
+  Vegetables: { bg: "#D8F0DA", color: "#1B5E20" },
+  Dairy:      { bg: "#DDEEFF", color: "#0D47A1" },
+  Snacks:     { bg: "#FFF9C4", color: "#7A5800" },
+  Pantry:     { bg: "#EDD9F5", color: "#4A148C" },
+  Grain:      { bg: "#EDE0D4", color: "#4E342E" },
+  Meat:       { bg: "#FCE4EC", color: "#880E4F" },
+  Seafood:    { bg: "#E0F7FA", color: "#006064" },
 };
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  high:   { label: "High",   color: "#C0392B", bg: "#FDECEA" },
+  medium: { label: "Medium", color: "#B7770D", bg: "#FEF9E7" },
+  low:    { label: "Low",    color: "#1E8449", bg: "#EAFAF1" },
+};
+
+const fmt = (v: number) =>
+  `₱${v.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ListScreen() {
-  const { items, togglePurchased, updateQuantity, removeItem, clearPurchased } = useGroceryStore();
+  const { items, togglePurchased, updateQuantity, removeItem, clearPurchased } =
+    useGroceryStore();
 
   const pending   = items.filter((i) => !i.purchased);
   const completed = items.filter((i) => i.purchased);
-  const progress  = items.length > 0 ? completed.length / items.length : 0;
-  const pct       = Math.round(progress * 100);
+  const pct       = items.length > 0 ? Math.round((completed.length / items.length) * 100) : 0;
 
-  const handleClearCompleted = () =>
+  const completedCost     = completed.reduce((s, i) => s + (i.totalPrice ?? (i.estimatedPrice != null ? i.estimatedPrice * i.quantity : 0)), 0);
+  const hasCompletedPrice = completed.some((i) => i.estimatedPrice != null);
+
+  const handleClear = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Clear", style: "destructive", onPress: () => clearPurchased() },
+      { text: "Clear",  style: "destructive", onPress: () => clearPurchased() },
     ]);
 
   return (
-    <LinearGradient colors={["#7BC9BE", "#008296"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.container}>
+    <LinearGradient
+      colors={["#7BC9BE", "#008296"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.container}
+    >
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 120 }}
         >
-          {/* ── Hero Card ─────────────────────────── */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroTopRow}>
-              <Text style={styles.todayLabel}>TODAY</Text>
-              {items.length > 0 && (
-                <View style={styles.pctPill}>
-                  <Text style={styles.pctText}>{pct}% done</Text>
-                </View>
-              )}
-            </View>
 
+          {/* ── HERO CARD ─────────────────────────── */}
+          <View style={styles.heroCard}>
+            <Text style={styles.todayLabel}>TODAY</Text>
             <Text style={styles.heroTitle}>Your Grocery Board</Text>
 
-            <View style={styles.statChipRow}>
+            <View style={styles.statRow}>
               <View style={styles.statChip}>
-                <Ionicons name="cart-outline" size={13} color={colors.teal} />
+                <View style={[styles.statDot, { backgroundColor: "#F59E0B" }]} />
                 <Text style={styles.statChipText}>{pending.length} pending</Text>
               </View>
-              <View style={[styles.statChip, { marginLeft: spacing.sm }]}>
-                <Ionicons name="checkmark-circle-outline" size={13} color="#2ECC71" />
+              <View style={styles.statChip}>
+                <View style={[styles.statDot, { backgroundColor: "#2ECC71" }]} />
                 <Text style={styles.statChipText}>{completed.length} completed</Text>
               </View>
             </View>
 
-            <View style={styles.progressTrack}>
-              <LinearGradient
-                colors={["#62C4BC", "#006A7A"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[styles.progressFill, { width: `${pct}%` }]}
-              />
+            <View style={styles.progressRow}>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+              </View>
+              <Text style={styles.progressPct}>{pct}%</Text>
             </View>
           </View>
 
-          {/* ── Shopping Items ───────────────────── */}
+          {/* ── SHOPPING ITEMS ───────────────────── */}
           {pending.length > 0 && (
-            <View style={styles.section}>
+            <View style={styles.outerSection}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionLabel}>SHOPPING ITEMS</Text>
                 <View style={styles.countBadge}>
@@ -106,229 +151,293 @@ export default function ListScreen() {
                 </View>
               </View>
 
-              {pending.map((item) => {
-                const emoji         = CATEGORY_EMOJI[item.category] ?? "🛒";
-                const catBg         = CATEGORY_BG[item.category] ?? ["#F0F0F0", "#DDD"];
-                const dotColor      = PRIORITY_COLOR[item.priority] ?? "#ccc";
-                const priorityLabel = item.priority.charAt(0).toUpperCase() + item.priority.slice(1);
+              <View style={styles.innerSection}>
+                {pending.map((item) => {
+                  const catPill  = CATEGORY_PILL[item.category]  ?? { bg: "#F0F0F0", color: "#555" };
+                  const pCfg     = PRIORITY_CONFIG[item.priority] ?? PRIORITY_CONFIG.low;
+                  const lineTotal = item.estimatedPrice != null
+                    ? (item.totalPrice ?? item.estimatedPrice * item.quantity)
+                    : null;
+                  const itemImage = getItemImage(item.name);
 
-                return (
-                  <View key={item.id} style={styles.itemCard}>
-                    {/* Checkbox */}
-                    <TouchableOpacity
-                      style={styles.checkbox}
-                      onPress={() => togglePurchased(item.id)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    />
+                  return (
+                    <View key={item.id} style={styles.itemCard}>
+                      <TouchableOpacity
+                        style={styles.checkbox}
+                        onPress={() => togglePurchased(item.id)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: false }}
+                      />
 
-                    {/* Emoji thumbnail */}
-                    <LinearGradient
-                      colors={catBg as [string, string]}
-                      style={styles.thumbnail}
-                    >
-                      <Text style={styles.thumbnailEmoji}>{emoji}</Text>
-                    </LinearGradient>
+                      {itemImage ? (
+                        <Image
+                          source={itemImage}
+                          style={styles.thumbnail}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.thumbnailPlaceholder}>
+                          <Ionicons name="image-outline" size={22} color="rgba(255,255,255,0.4)" />
+                        </View>
+                      )}
 
-                    {/* Info */}
-                    <View style={styles.itemInfo}>
-                      {/* Row 1: name + priority badge + delete */}
-                      <View style={styles.itemTopRow}>
+                      <View style={styles.itemInfo}>
                         <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                        <View style={styles.itemTopActions}>
-                          <View style={[styles.priorityBadge, { backgroundColor: dotColor + "22", borderColor: dotColor }]}>
-                            <Text style={[styles.priorityBadgeText, { color: dotColor }]}>
-                              {priorityLabel}
+                        <View style={[styles.catPill, { backgroundColor: catPill.bg }]}>
+                          <Text style={[styles.catPillText, { color: catPill.color }]}>
+                            {item.category}
+                          </Text>
+                        </View>
+                        {lineTotal !== null && (
+                          <Text style={styles.itemPrice}>{fmt(lineTotal)}</Text>
+                        )}
+                      </View>
+
+                      <View style={styles.itemRight}>
+                        <View style={styles.itemRightTop}>
+                          <View style={[styles.priBadge, { backgroundColor: pCfg.bg }]}>
+                            <Text style={[styles.priBadgeText, { color: pCfg.color }]}>
+                              {pCfg.label}
                             </Text>
                           </View>
                           <TouchableOpacity
                             onPress={() => removeItem(item.id)}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.trashBtn}
                           >
-                            <Ionicons name="trash-outline" size={15} color="rgba(255,255,255,0.6)" />
+                            <Ionicons name="trash-outline" size={13} color="#FF4444" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.qtyRow}>
+                          <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() => updateQuantity(item.id, item.quantity - 1)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="remove" size={14} color="#007A8A" />
+                          </TouchableOpacity>
+                          <View style={styles.qtyTrack}>
+                            <Text style={styles.qtyText}>{item.quantity}</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() => updateQuantity(item.id, item.quantity + 1)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="add" size={14} color="#007A8A" />
                           </TouchableOpacity>
                         </View>
                       </View>
-
-                      {/* Row 2: category pill */}
-                      <View style={styles.metaRow}>
-                        <View style={styles.categoryPill}>
-                          <Text style={styles.categoryPillText}>{item.category}</Text>
-                        </View>
-                      </View>
-
-                      {/* Row 3: qty controls */}
-                      <View style={styles.qtyRow}>
-                        <TouchableOpacity
-                          style={styles.qtyBtn}
-                          onPress={() => updateQuantity(item.id, item.quantity - 1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="remove" size={14} color={colors.white} />
-                        </TouchableOpacity>
-                        <View style={styles.qtyPill}>
-                          <Text style={styles.qtyText}>{item.quantity}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.qtyBtn}
-                          onPress={() => updateQuantity(item.id, item.quantity + 1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="add" size={14} color={colors.white} />
-                        </TouchableOpacity>
-                      </View>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
           )}
 
-          {/* ── Empty State ──────────────────────── */}
+          {/* ── EMPTY STATE ──────────────────────── */}
           {pending.length === 0 && completed.length === 0 && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrap}>
-                <Text style={styles.emptyIcon}>🛒</Text>
+                <Text style={{ fontSize: 38 }}>🛒</Text>
               </View>
               <Text style={styles.emptyTitle}>Your list is empty!</Text>
-              <Text style={styles.emptySubtext}>Head over to Planner to add items to your grocery list.</Text>
+              <Text style={styles.emptySub}>
+                Head over to the Planner tab to add items to your grocery list.
+              </Text>
             </View>
           )}
 
-          {/* ── All Done State ───────────────────── */}
+          {/* ── ALL DONE ─────────────────────────── */}
           {pending.length === 0 && completed.length > 0 && (
             <View style={styles.allDoneCard}>
-              <Text style={styles.allDoneEmoji}>🎉</Text>
+              <Text style={{ fontSize: 40, marginBottom: spacing.sm }}>🎉</Text>
               <Text style={styles.allDoneTitle}>All done!</Text>
               <Text style={styles.allDoneSub}>You've checked off everything on your list.</Text>
             </View>
           )}
 
-          {/* ── Divider ──────────────────────────── */}
+          {/* ── DIVIDER ──────────────────────────── */}
           {pending.length > 0 && completed.length > 0 && (
             <View style={styles.divider} />
           )}
 
-          {/* ── Completed ────────────────────────── */}
+          {/* ── COMPLETED ────────────────────────── */}
           {completed.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.completedCard}>
-                <View style={styles.completedHeader}>
-                  <View style={styles.completedLabelRow}>
-                    <Ionicons name="checkmark-circle" size={14} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.completedLabel}>COMPLETED  ·  {completed.length}</Text>
+            <View style={styles.outerSection}>
+              <View style={styles.innerSection}>
+                <View style={styles.completedCard}>
+                  <View style={styles.completedHeader}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Ionicons name="checkmark-circle" size={14} color="#2ECC71" />
+                      <Text style={styles.completedHeaderLabel}>
+                        COMPLETED · {completed.length}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleClear}
+                      style={styles.clearAllBtn}
+                    >
+                      <Ionicons name="trash-outline" size={13} color="#FF6B6B" />
+                      <Text style={styles.clearText}>Clear all</Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={handleClearCompleted} style={styles.clearBtn}>
-                    <Ionicons name="trash-outline" size={13} color="#FF6B6B" />
-                    <Text style={styles.clearText}>Clear all</Text>
-                  </TouchableOpacity>
-                </View>
 
-                {completed.map((item) => (
-                  <View key={item.id} style={styles.completedItem}>
-                    <TouchableOpacity
-                      onPress={() => togglePurchased(item.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <View style={styles.completedCheck}>
-                        <Ionicons name="checkmark" size={13} color={colors.white} />
+                  {completed.map((item, index) => {
+                    const lineTotal = item.estimatedPrice != null
+                      ? (item.totalPrice ?? item.estimatedPrice * item.quantity)
+                      : null;
+                    const isLast    = index === completed.length - 1;
+                    const itemImage = getItemImage(item.name);
+
+                    return (
+                      <View
+                        key={item.id}
+                        style={[styles.completedItem, !isLast && styles.completedItemBorder]}
+                      >
+                        <TouchableOpacity
+                          onPress={() => togglePurchased(item.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <View style={styles.completedCheck}>
+                            <Ionicons name="checkmark" size={11} color="#2ECC71" />
+                          </View>
+                        </TouchableOpacity>
+
+                        {itemImage ? (
+                          <Image
+                            source={itemImage}
+                            style={styles.completedThumb}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.completedThumbPlaceholder}>
+                            <Ionicons name="image-outline" size={11} color="rgba(255,255,255,0.3)" />
+                          </View>
+                        )}
+
+                        <Text style={styles.completedName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+
+                        {lineTotal !== null && (
+                          <Text style={styles.completedPrice}>{fmt(lineTotal)}</Text>
+                        )}
+
+                        <TouchableOpacity
+                          onPress={() => removeItem(item.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.trashBtn}
+                        >
+                          <Ionicons name="trash-outline" size={13} color="#FF4444" />
+                        </TouchableOpacity>
                       </View>
-                    </TouchableOpacity>
-                    <Text style={styles.completedEmoji}>{CATEGORY_EMOJI[item.category] ?? "🛒"}</Text>
-                    <Text style={styles.completedName} numberOfLines={1}>{item.name}</Text>
-                    <TouchableOpacity
-                      onPress={() => removeItem(item.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="trash-outline" size={15} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                    );
+                  })}
+
+                  {hasCompletedPrice && (
+                    <View style={styles.spentRow}>
+                      <Text style={styles.spentLabel}>Spent</Text>
+                      <Text style={styles.spentValue}>{fmt(completedCost)}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
           )}
+
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // ── Hero Card ─────────────────────────────────────────────
+  // ── Hero Card ──────────────────────────────────────────────────────────────
   heroCard: {
     backgroundColor: colors.white,
     margin: spacing.lg,
+    marginBottom: spacing.md,
     borderRadius: radius.xl,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingBottom: 0,
-    overflow: "hidden",
+    paddingBottom: spacing.md,
     ...shadows.card,
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.xxs,
   },
   todayLabel: {
     fontSize: typography.xs,
-    color: colors.textMuted,
+    color: "#007A8A",
     letterSpacing: typography.wide,
-    fontWeight: typography.semibold,
+    fontWeight: "800",
     textTransform: "uppercase",
-  },
-  pctPill: {
-    backgroundColor: "#E8F8F5",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  pctText: {
-    fontSize: 11,
-    fontWeight: typography.bold,
-    color: "#008296",
+    marginBottom: 4,
   },
   heroTitle: {
-    fontSize: typography.xxl,
-    fontWeight: "900" as const,
+    fontSize: 26,
+    fontWeight: "900",
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
-  statChipRow: {
+  statRow: {
     flexDirection: "row",
-    marginBottom: spacing.lg,
+    gap: 8,
+    marginBottom: spacing.sm,
   },
   statChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F4FAFA",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: "#D0ECEC",
+    gap: 5,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  statDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   statChipText: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    fontWeight: typography.medium,
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   progressTrack: {
+    flex: 1,
     height: 5,
-    backgroundColor: "#EEEEEE",
+    backgroundColor: "#B2E0DC",
+    borderRadius: 4,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
+    backgroundColor: "#007A8A",
+    borderRadius: 4,
+  },
+  progressPct: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: "600",
+    minWidth: 28,
+    textAlign: "right",
   },
 
-  // ── Section ───────────────────────────────────────────────
-  section: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
+  // ── Section headers ────────────────────────────────────────────────────────
+  outerSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -342,133 +451,253 @@ const styles = StyleSheet.create({
     letterSpacing: typography.wide,
   },
   countBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  countBadgeText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: typography.bold,
-  },
+  countBadgeText: { color: colors.white, fontSize: 11, fontWeight: typography.bold },
+  innerSection: { marginHorizontal: spacing.sm },
 
-  // ── Item Card ─────────────────────────────────────────────
+  // ── Pending item cards ─────────────────────────────────────────────────────
   itemCard: {
-    backgroundColor: "rgba(0, 130, 150, 0.48)",
+    backgroundColor: "rgba(0,110,130,0.50)",
     borderRadius: radius.lg,
-    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.55)",
+    marginBottom: spacing.sm,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md + 2,
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",                     // white stroke — matches Figma
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "rgba(255,255,255,0.8)",
     flexShrink: 0,
   },
   thumbnail: {
-    width: 54,
-    height: 54,
+    width: 52,
+    height: 52,
     borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    flexShrink: 0,
+  },
+  thumbnailPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
   },
-  thumbnailEmoji: { fontSize: 28 },
-  itemInfo: { flex: 1, minWidth: 0 },
-  itemTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
+  itemInfo: { flex: 1, minWidth: 0, gap: 3, paddingRight: 4 },
   itemName: {
-    fontWeight: "800" as const,
-    fontSize: typography.base,
+    fontWeight: "800",
+    fontSize: 14,
     color: colors.white,
-    flex: 1,
-    marginRight: spacing.xs,
+    letterSpacing: 0.1,
   },
-  itemTopActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
+  catPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  catPillText: { fontSize: 9, fontWeight: typography.semibold },
+  itemPrice: {
+    fontSize: 13,
+    color: colors.white,
+    fontWeight: "700",
+  },
+  itemRight: {
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    alignSelf: "stretch",
     flexShrink: 0,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
   },
-  priorityBadgeText: {
-    fontSize: 10,
-    fontWeight: typography.bold,
-  },
-  metaRow: {
+  itemRightTop: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
+    gap: 8,
   },
-  categoryPill: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 8,
+  priBadge: {
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: radius.pill,
   },
-  categoryPillText: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: typography.semibold,
-  },
+  priBadgeText: { fontSize: 9, fontWeight: typography.bold },
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: 5,
   },
   qtyBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    backgroundColor: "rgba(255,255,255,0.92)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  qtyPill: {
+  qtyTrack: {
     backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radius.pill,
-    minWidth: 32,
+    borderRadius: 6,
+    minWidth: 28,
     alignItems: "center",
   },
   qtyText: {
-    fontWeight: typography.bold,
-    fontSize: typography.base,
+    fontSize: 14,
+    fontWeight: "800",
     color: colors.white,
+    textAlign: "center",
   },
 
-  // ── Divider ───────────────────────────────────────────────
+  // ── Divider — slightly thicker ─────────────────────────────────────────────
   divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    marginHorizontal: spacing.lg + spacing.sm,
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+    borderRadius: 1,
   },
 
-  // ── Empty State ───────────────────────────────────────────
-  emptyState: { alignItems: "center", marginTop: 60, paddingHorizontal: spacing.xxxl },
+  // ── Action buttons ─────────────────────────────────────────────────────────
+  trashBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    backgroundColor: "rgba(255,68,68,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  clearAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,107,107,0.12)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+
+  // ── Completed card ─────────────────────────────────────────────────────────
+  completedCard: {
+    backgroundColor: "rgba(0,110,130,0.50)",
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.55)",
+    overflow: "hidden",
+  },
+  completedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.15)",
+  },
+  completedHeaderLabel: {
+    fontSize: typography.xs,
+    fontWeight: typography.extrabold,
+    letterSpacing: typography.wide,
+    color: "rgba(255,255,255,0.85)",
+  },
+  clearText: { fontSize: typography.sm, color: "#FF6B6B", fontWeight: typography.semibold },
+  completedItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: "rgba(46,204,113,0.06)",
+  },
+  completedItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+  },
+  completedCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: "rgba(46,204,113,0.25)",
+    borderWidth: 1.5,
+    borderColor: "#2ECC71",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  completedThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+  },
+  completedThumbPlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  completedName: {
+    flex: 1,
+    textDecorationLine: "line-through",
+    color: "rgba(255,255,255,0.45)",
+    fontSize: typography.sm,
+    fontWeight: typography.medium,
+  },
+  completedPrice: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: typography.medium,
+    textDecorationLine: "line-through",
+  },
+  spentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderTopWidth: 1.5,
+    borderTopColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  spentLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  spentValue: {
+    fontSize: 14,
+    color: colors.white,
+    fontWeight: "800",
+  },
+
+  // ── Empty / All done states ────────────────────────────────────────────────
+  emptyState: {
+    alignItems: "center",
+    marginTop: 60,
+    paddingHorizontal: spacing.xxxl,
+  },
   emptyIconWrap: {
     width: 80,
     height: 80,
@@ -478,32 +707,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: spacing.md,
   },
-  emptyIcon: { fontSize: 38 },
   emptyTitle: {
     fontSize: typography.xl,
     fontWeight: typography.bold,
     color: colors.white,
     marginBottom: spacing.xs,
   },
-  emptySubtext: {
+  emptySub: {
     fontSize: typography.sm,
     color: "rgba(255,255,255,0.6)",
     textAlign: "center",
     lineHeight: 20,
   },
-
-  // ── All Done ──────────────────────────────────────────────
   allDoneCard: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    backgroundColor: "rgba(0,80,96,0.3)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    marginBottom: spacing.md,
+    backgroundColor: "rgba(0,70,90,0.40)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
     borderRadius: radius.xl,
     padding: spacing.xl,
     alignItems: "center",
   },
-  allDoneEmoji: { fontSize: 40, marginBottom: spacing.sm },
   allDoneTitle: {
     fontSize: typography.xl,
     fontWeight: typography.bold,
@@ -514,67 +739,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     color: "rgba(255,255,255,0.6)",
     textAlign: "center",
-  },
-
-  // ── Completed ─────────────────────────────────────────────
-  completedCard: {
-    backgroundColor: "rgba(0, 130, 150, 0.48)",
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  completedHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  completedLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  completedLabel: {
-    fontSize: typography.xs,
-    fontWeight: typography.extrabold,
-    letterSpacing: typography.wide,
-    color: "rgba(255,255,255,0.8)",
-  },
-  clearBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  clearText: {
-    fontSize: typography.sm,
-    color: "#FF6B6B",
-    fontWeight: typography.semibold,
-  },
-  completedItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.15)",
-    gap: spacing.sm,
-  },
-  completedCheck: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  completedEmoji: { fontSize: 16 },
-  completedName: {
-    flex: 1,
-    textDecorationLine: "line-through",
-    color: "rgba(255,255,255,0.55)",
-    fontSize: typography.base,
-    fontWeight: typography.medium,
   },
 });
