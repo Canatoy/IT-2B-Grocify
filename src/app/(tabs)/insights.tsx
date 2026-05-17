@@ -271,9 +271,9 @@ function DonutChart({ slices, size = 110 }: { slices: PieSlice[]; size?: number 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
-  const { signOut }               = useAuth();
-  const { user }                  = useUser();
-  const { items, clearPurchased } = useGroceryStore();
+  const { signOut }                           = useAuth();
+  const { user }                              = useUser();
+  const { items, clearPurchased, displayName } = useGroceryStore();
 
   const stats = useMemo(() => {
     const purchased = items.filter((i) => i.purchased);
@@ -290,7 +290,6 @@ export default function InsightsScreen() {
       0
     );
 
-    // Top purchased items ranked by quantity
     const freq: Record<string, number> = {};
     for (const item of purchased) {
       freq[item.name] = (freq[item.name] ?? 0) + item.quantity;
@@ -316,7 +315,6 @@ export default function InsightsScreen() {
   const doSignOut = async () => {
     try {
       if (Platform.OS === "web") {
-        // On web, Clerk needs a redirectUrl to properly clear the session
         await signOut({ redirectUrl: window.location.origin });
       } else {
         await signOut();
@@ -329,10 +327,7 @@ export default function InsightsScreen() {
 
   const handleLogout = () => {
     if (Platform.OS === "web") {
-      // Alert.alert doesn't work well on web — use a direct call
-      if (window.confirm("Are you sure you want to log out?")) {
-        doSignOut();
-      }
+      if (window.confirm("Are you sure you want to log out?")) doSignOut();
     } else {
       Alert.alert("Log Out", "Are you sure you want to log out?", [
         { text: "Cancel", style: "cancel" },
@@ -347,15 +342,20 @@ export default function InsightsScreen() {
       { text: "Clear", style: "destructive", onPress: () => clearPurchased() },
     ]);
 
-  const displayName =
+  // ── Display name: prefer the store value (set/edited in Profile),
+  //    fall back to Clerk data if the store hasn't been seeded yet ──────────
+  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const clerkFallback =
     user?.firstName
       ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
-      : user?.username ?? "Username";
+      : user?.username ?? primaryEmail.split("@")[0] ?? "User";
+
+  const shownName = displayName || clerkFallback;
 
   const pieSlices: PieSlice[] = [
-    { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items"     },
-    { color: "#2ECC71", value: stats.completedItems, label: "Completed"       },
-    { color: "#7BBFDB", value: stats.remainingItems, label: "Remaining"       },
+    { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items" },
+    { color: "#2ECC71", value: stats.completedItems, label: "Completed"   },
+    { color: "#7BBFDB", value: stats.remainingItems, label: "Remaining"   },
   ];
 
   const completionPct =
@@ -376,9 +376,8 @@ export default function InsightsScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
 
-          {/* ── PROFILE HERO CARD (white, like index.tsx) ───── */}
+          {/* ── PROFILE HERO CARD ─────────────────────────── */}
           <View style={styles.heroCard}>
-            {/* Top row: avatar + name + logout */}
             <View style={styles.profileRow}>
               {user?.imageUrl ? (
                 <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
@@ -389,7 +388,8 @@ export default function InsightsScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.greetingLabel}>WELCOME BACK</Text>
-                <Text style={styles.username} numberOfLines={1}>{displayName}</Text>
+                {/* ← now reads from the shared store */}
+                <Text style={styles.username} numberOfLines={1}>{shownName}</Text>
               </View>
               <TouchableOpacity
                 style={styles.logoutBtn}
@@ -401,7 +401,6 @@ export default function InsightsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Stat chips */}
             <View style={styles.heroStatRow}>
               <View style={styles.heroStatChip}>
                 <View style={[styles.heroStatDot, { backgroundColor: "#F59E0B" }]} />
@@ -417,7 +416,6 @@ export default function InsightsScreen() {
               </View>
             </View>
 
-            {/* Completion bar */}
             <View style={styles.heroProgressRow}>
               <View style={styles.heroProgressTrack}>
                 <View
@@ -430,15 +428,12 @@ export default function InsightsScreen() {
 
           {/* ── SPENDING ROW ──────────────────────────────────── */}
           <View style={styles.spendingRow}>
-
-            {/* Left — weekly spending + bar chart */}
             <View style={[styles.glassCard, styles.spendingLeft]}>
               <Text style={styles.glassLabel}>WEEKLY SPENDING</Text>
               <Text style={styles.spendingValue}>{fmt(stats.weeklySpending)}</Text>
               <WeeklyBars items={items} />
             </View>
 
-            {/* Right — month + monthly total */}
             <View style={[styles.glassCard, styles.spendingRight]}>
               <View style={styles.monthBadge}>
                 <Text style={styles.monthName}>{MONTH_LABEL}</Text>
@@ -448,7 +443,6 @@ export default function InsightsScreen() {
               <Text style={styles.glassLabel}>MONTHLY TOTAL</Text>
               <Text style={styles.monthlyValue}>{fmt(stats.monthlyTotal)}</Text>
 
-              {/* Mini savings indicator */}
               {stats.monthlyTotal > 0 && stats.weeklySpending > 0 && (
                 <View style={styles.savingsChip}>
                   <Ionicons name="trending-up-outline" size={10} color="#00FF85" />
@@ -458,7 +452,6 @@ export default function InsightsScreen() {
                 </View>
               )}
             </View>
-
           </View>
 
           {/* ── TOP PURCHASED ITEMS ───────────────────────────── */}
@@ -490,12 +483,9 @@ export default function InsightsScreen() {
 
                   return (
                     <View key={idx} style={styles.topItemRow}>
-                      {/* Rank number */}
                       <Text style={[styles.rankNum, { color: idx < 3 ? rankColor : "rgba(255,255,255,0.4)" }]}>
                         {idx + 1}
                       </Text>
-
-                      {/* Image */}
                       {img ? (
                         <Image source={img} style={styles.topItemImg} resizeMode="cover" />
                       ) : (
@@ -503,8 +493,6 @@ export default function InsightsScreen() {
                           <Ionicons name="image-outline" size={13} color="rgba(255,255,255,0.3)" />
                         </View>
                       )}
-
-                      {/* Name + bar */}
                       <View style={styles.topItemInfo}>
                         <Text style={styles.topItemName} numberOfLines={1}>{item.name}</Text>
                         <View style={styles.topItemBarTrack}>
@@ -516,8 +504,6 @@ export default function InsightsScreen() {
                           />
                         </View>
                       </View>
-
-                      {/* Qty badge */}
                       <View style={styles.qtyBadge}>
                         <Text style={styles.qtyBadgeText}>×{item.qty}</Text>
                       </View>
@@ -535,10 +521,7 @@ export default function InsightsScreen() {
             </View>
 
             <View style={styles.stockRow}>
-              {/* Donut with % in centre */}
               <DonutChart slices={pieSlices} size={118} />
-
-              {/* Legend + clear button */}
               <View style={styles.legendCol}>
                 {pieSlices.map((sl, i) => (
                   <View key={i} style={styles.legendRow}>
@@ -549,7 +532,6 @@ export default function InsightsScreen() {
                     </View>
                   </View>
                 ))}
-
                 <TouchableOpacity
                   style={styles.clearBtn}
                   onPress={handleClearCompleted}
@@ -593,7 +575,6 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // ── Hero (white card) ─────────────────────────────────────
   heroCard: {
     backgroundColor: colors.white,
     margin: spacing.lg,
@@ -704,7 +685,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-  // ── Glass card (dark) ─────────────────────────────────────
   glassCard: {
     backgroundColor: "rgba(0,110,130,0.50)",
     borderRadius: radius.xl,
@@ -715,7 +695,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 
-  // ── Spending row ──────────────────────────────────────────
   spendingRow: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,
@@ -795,7 +774,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Section header ────────────────────────────────────────
   sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -822,7 +800,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Top Items (ranked list) ───────────────────────────────
   topItemsList: {
     gap: spacing.sm,
   },
@@ -885,7 +862,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Empty state ───────────────────────────────────────────
   emptyBox: {
     alignItems: "center",
     paddingVertical: spacing.lg,
@@ -912,7 +888,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // ── Stock Level ───────────────────────────────────────────
   stockRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -971,7 +946,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Feedback ──────────────────────────────────────────────
   feedbackBtn: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,

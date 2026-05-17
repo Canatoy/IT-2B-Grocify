@@ -1,13 +1,13 @@
-import { GroceryCategory, GroceryPriority, useGroceryStore } from "@/store/grocery-store";
+import { useGroceryStore } from "@/store/grocery-store";
+import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
     Alert,
-    Animated,
-    Dimensions,
-    ImageBackground,
-    KeyboardAvoidingView,
+    Image,
     Modal,
     Platform,
     ScrollView,
@@ -15,7 +15,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -26,232 +26,272 @@ import {
     typography,
 } from "../../constants/theme";
 
-// ─── Image assets ─────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const groceryBanner = require("../../../assets/images/grocery-banner.jpg");
+type EditableField = "name" | "username" | "email" | "phone";
 
-const CATEGORY_IMAGES: Record<string, any> = {
-  Fruits:     require("../../../assets/images/categories/fruits.jpg"),
-  Vegetables: require("../../../assets/images/categories/vegetables.jpg"),
-  Dairy:      require("../../../assets/images/categories/dairy.jpg"),
-  Snacks:     require("../../../assets/images/categories/snacks.jpg"),
-  Pantry:     require("../../../assets/images/categories/pantry.jpg"),
-  Grain:      require("../../../assets/images/categories/grain.jpg"),
-  Meat:       require("../../../assets/images/categories/meat.jpg"),
-  Seafood:    require("../../../assets/images/categories/seafood.jpg"),
-};
+interface FieldConfig {
+  key: EditableField;
+  label: string;
+  placeholder: string;
+  keyboardType?: "default" | "email-address" | "phone-pad";
+  autoCapitalize?: "none" | "sentences" | "words";
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_PADDING = 16;
-const CARD_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - CARD_PADDING * 2 - spacing.sm * 3 - 2.5 * 2 * 4) / 4;
-
-const SCROLL_BOTTOM_PADDING = 120;
-const MODAL_BOTTOM_PADDING = 44;
-
-// Tab bar height — adjust if your tab bar height differs
-const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 83 : 60;
-
-export const CATEGORIES = [
-  { id: "1", name: "Fruits",     overlay: "rgba(180,30,30,0.72)"   },
-  { id: "2", name: "Vegetables", overlay: "rgba(45,110,45,0.72)"   },
-  { id: "3", name: "Dairy",      overlay: "rgba(200,175,100,0.72)" },
-  { id: "4", name: "Snacks",     overlay: "rgba(160,80,20,0.72)"   },
-  { id: "5", name: "Pantry",     overlay: "rgba(140,90,40,0.72)"   },
-  { id: "6", name: "Grain",      overlay: "rgba(190,150,60,0.72)"  },
-  { id: "7", name: "Meat",       overlay: "rgba(160,40,40,0.72)"   },
-  { id: "8", name: "Seafood",    overlay: "rgba(30,100,160,0.72)"  },
+const FIELD_CONFIGS: FieldConfig[] = [
+  {
+    key: "name",
+    label: "Name",
+    placeholder: "Your full name",
+    autoCapitalize: "words",
+  },
+  {
+    key: "username",
+    label: "Username",
+    placeholder: "Your username",
+    autoCapitalize: "none",
+  },
+  {
+    key: "email",
+    label: "Email",
+    placeholder: "Your email address",
+    keyboardType: "email-address",
+    autoCapitalize: "none",
+  },
+  {
+    key: "phone",
+    label: "Phone Number",
+    placeholder: "Your phone number",
+    keyboardType: "phone-pad",
+  },
 ];
 
-export const FREQUENT_ITEMS = [
-  { id: "1", name: "Avocado", category: "Fruits"  as GroceryCategory, emoji: "🥑" },
-  { id: "2", name: "Milk",    category: "Dairy"   as GroceryCategory, emoji: "🥛" },
-  { id: "3", name: "Bread",   category: "Grain"   as GroceryCategory, emoji: "🍞" },
-  { id: "4", name: "Eggs",    category: "Dairy"   as GroceryCategory, emoji: "🥚" },
-  { id: "5", name: "Sugar",   category: "Pantry"  as GroceryCategory, emoji: "🍬" },
-  { id: "6", name: "Rice",    category: "Pantry"  as GroceryCategory, emoji: "🍚" },
+const TERMS_BULLETS = [
+  "Users must provide accurate account information.",
+  "Keep your password and account details secure.",
+  "Orders depend on product availability and confirmation.",
+  "Prices and promotions may change without notice.",
+  "GROCIFY uses security measures to protect accounts and transactions.",
+  "Report suspicious activity immediately.",
+  "GROCIFY may update these terms and policies anytime.",
 ];
 
-export const PRIORITY_CONFIG = {
-  low:    { label: "Low",    color: "#2ECC71", bg: "rgba(46,204,113,0.15)" },
-  medium: { label: "Medium", color: "#F39C12", bg: "rgba(243,156,18,0.15)" },
-  high:   { label: "High",   color: "#E74C3C", bg: "rgba(231,76,60,0.15)"  },
-};
+// ─── EditModal ────────────────────────────────────────────────────────────────
 
-// ─── SuccessToast ─────────────────────────────────────────────────────────────
-
-interface ToastProps {
-  toastKey: number;
-  itemName: string;
-  onDone: () => void;
+interface EditModalProps {
+  visible: boolean;
+  field: FieldConfig | null;
+  value: string;
+  onChange: (text: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
 }
 
-function SuccessToast({ toastKey, itemName, onDone }: ToastProps) {
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(16)).current;
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (toastKey === 0) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    opacity.setValue(0);
-    translateY.setValue(16);
-
-    Animated.parallel([
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 8 }),
-      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start(() => {
-      timerRef.current = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(opacity, { toValue: 0, duration: 280, useNativeDriver: true }),
-          Animated.timing(translateY, { toValue: -8, duration: 280, useNativeDriver: true }),
-        ]).start(onDone);
-      }, 2000);
-    });
-
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [toastKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (toastKey === 0) return null;
-
+function EditModal({ visible, field, value, onChange, onSave, onCancel }: EditModalProps) {
+  if (!field) return null;
   return (
-    <Animated.View
-      style={[styles.toast, { opacity, transform: [{ translateY }] }]}
-      accessibilityLiveRegion="polite"
-      accessibilityLabel={`Added ${itemName} to your list`}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      accessibilityViewIsModal
     >
-      <View style={styles.toastIconWrap}>
-        <Ionicons name="checkmark-circle" size={22} color="#2ECC71" />
+      <View style={styles.modalOverlay}>
+        <View style={styles.editModalCard}>
+          <Text style={styles.editModalTitle}>Edit {field.label}</Text>
+          <View style={styles.editInputRow}>
+            <TextInput
+              style={styles.editInput}
+              value={value}
+              onChangeText={onChange}
+              placeholder={field.placeholder}
+              placeholderTextColor="rgba(0,0,0,0.3)"
+              keyboardType={field.keyboardType ?? "default"}
+              autoCapitalize={field.autoCapitalize ?? "sentences"}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={onSave}
+            />
+          </View>
+          <View style={styles.editModalBtns}>
+            <TouchableOpacity
+              style={styles.editCancelBtn}
+              onPress={onCancel}
+              accessibilityLabel="Cancel"
+              accessibilityRole="button"
+            >
+              <Text style={styles.editCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editSaveBtn}
+              onPress={onSave}
+              accessibilityLabel="Save"
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={["#7BC9BE", "#008296"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.editSaveBtnGradient}
+              >
+                <Text style={styles.editSaveText}>Save</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-      <View style={styles.toastBody}>
-        <Text style={styles.toastTitle}>Added to list!</Text>
-        <Text style={styles.toastSub} numberOfLines={1}>{itemName}</Text>
-      </View>
-      <TouchableOpacity
-        onPress={onDone}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        accessibilityLabel="Dismiss"
-        accessibilityRole="button"
-      >
-        <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
-      </TouchableOpacity>
-    </Animated.View>
+    </Modal>
   );
 }
 
-// ─── PlannerScreen ────────────────────────────────────────────────────────────
+// ─── ProfileScreen ────────────────────────────────────────────────────────────
 
-export default function PlannerScreen() {
-  const { addItem, items } = useGroceryStore();
+export default function ProfileScreen() {
+  const { setDisplayName } = useGroceryStore();
 
-  const pendingCount      = items.filter((i) => !i.purchased).length;
-  const highPriorityCount = items.filter((i) => !i.purchased && i.priority === "high").length;
-  const totalUnits        = items.filter((i) => !i.purchased).reduce((s, i) => s + i.quantity, 0);
+  const { signOut } = useAuth();
+  const { user }    = useUser();
 
-  const [itemName,          setItemName]          = useState("");
-  const [quantity,          setQuantity]          = useState("1");
-  const [quantityError,     setQuantityError]     = useState("");
-  const [estimatedPrice,    setEstimatedPrice]    = useState("");
-  const [selectedCategory,  setSelectedCategory]  = useState<GroceryCategory | "">("");
-  const [selectedPriority,  setSelectedPriority]  = useState<GroceryPriority>("low");
-  const [showFrequent,      setShowFrequent]      = useState(false);
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [loading,           setLoading]           = useState(false);
+  const primaryEmail    = user?.primaryEmailAddress?.emailAddress ?? "";
+  const defaultUsername = user?.username ?? primaryEmail.split("@")[0] ?? "";
 
-  const [toastKey,      setToastKey]      = useState(0);
-  const [toastItemName, setToastItemName] = useState("");
+  const [profileData, setProfileData] = useState({
+    name:     user?.fullName ?? "",
+    username: defaultUsername,
+    email:    primaryEmail,
+    phone:    user?.primaryPhoneNumber?.phoneNumber ?? "",
+  });
 
-  const addingRef = useRef(false);
+  // ── Photo upload state ──────────────────────────────────
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
-  const displayedCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4);
-
-  const parsedPrice = parseFloat(estimatedPrice);
-  const parsedQty   = parseInt(quantity, 10);
-  const totalPrice  =
-    !isNaN(parsedPrice) && parsedPrice > 0 && !isNaN(parsedQty) && parsedQty > 0
-      ? parsedPrice * parsedQty
-      : null;
-
-  const showToast = useCallback((name: string) => {
-    setToastItemName(name);
-    setToastKey((k) => k + 1);
+  useEffect(() => {
+    if (defaultUsername) setDisplayName(defaultUsername);
   }, []);
 
-  const parseQuantity = (raw: string): number | null => {
-    const n = parseInt(raw, 10);
-    if (isNaN(n) || n < 1) return null;
-    return n;
-  };
+  const [editingField, setEditingField] = useState<FieldConfig | null>(null);
+  const [editValue,    setEditValue]    = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const handleQuantityChange = (text: string) => {
-    setQuantity(text);
-    if (text && parseQuantity(text) === null) {
-      setQuantityError("Enter a whole number greater than 0");
-    } else {
-      setQuantityError("");
-    }
-  };
-
-  const handleAddItem = async () => {
-    if (!itemName.trim() || !selectedCategory) return;
-    if (addingRef.current) return;
-
-    const qty = parseQuantity(quantity);
-    if (qty === null) {
-      setQuantityError("Enter a whole number greater than 0");
+  // ── Photo picker handler ────────────────────────────────
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission needed",
+        "Please allow access to your photo library to change your profile photo."
+      );
       return;
     }
 
-    const price     = estimatedPrice ? parseFloat(estimatedPrice) : undefined;
-    const calcTotal = price && qty ? price * qty : undefined;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
 
-    addingRef.current = true;
-    setLoading(true);
-    try {
-      const name = itemName.trim();
-      await addItem({
-        name,
-        category: selectedCategory,
-        quantity: qty,
-        priority: selectedPriority,
-        estimatedPrice: price,
-        totalPrice: calcTotal,
-      });
-      showToast(name);
-      setItemName("");
-      setQuantity("1");
-      setQuantityError("");
-      setEstimatedPrice("");
-      setSelectedCategory("");
-      setSelectedPriority("low");
-    } catch (err) {
-      console.error("[PlannerScreen] addItem failed:", err);
-      Alert.alert("Couldn't add item", "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-      addingRef.current = false;
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setLocalPhotoUri(uri);
+      setPhotoUploading(true);
+
+      try {
+        const response = await fetch(uri);
+        const blob     = await response.blob();
+        const file     = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+        await user?.setProfileImage({ file });
+      } catch {
+        // Keep local preview even if Clerk upload fails silently
+      } finally {
+        setPhotoUploading(false);
+      }
     }
   };
 
-  const handleQuickAdd = async (item: (typeof FREQUENT_ITEMS)[0]) => {
-    if (addingRef.current) return;
-    addingRef.current = true;
-    setLoading(true);
+  // ── Field edit handlers ─────────────────────────────────
+  const openEdit = (field: FieldConfig) => {
+    setEditingField(field);
+    setEditValue(profileData[field.key]);
+    setModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!editingField) return;
+    const trimmed = editValue.trim();
+    if (!trimmed) {
+      Alert.alert("Invalid", `${editingField.label} cannot be empty.`);
+      return;
+    }
     try {
-      await addItem({ name: item.name, category: item.category, quantity: 1, priority: "low" });
-      setShowFrequent(false);
-      setTimeout(() => showToast(item.name), 350);
-    } catch (err) {
-      console.error("[PlannerScreen] quickAdd failed:", err);
-      Alert.alert("Couldn't add item", "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-      addingRef.current = false;
+      if (editingField.key === "name") {
+        const parts     = trimmed.split(" ");
+        const firstName = parts[0];
+        const lastName  = parts.slice(1).join(" ") || undefined;
+        await user?.update({ firstName, lastName });
+      } else if (editingField.key === "username" && user?.username !== undefined) {
+        await user?.update({ username: trimmed });
+      }
+    } catch {
+      // Silently ignore Clerk update errors
+    }
+    setProfileData((prev) => ({ ...prev, [editingField.key]: trimmed }));
+    if (editingField.key === "name" || editingField.key === "username") {
+      setDisplayName(trimmed);
+    }
+    setModalVisible(false);
+    setEditingField(null);
+  };
+
+  const handleCancel = () => {
+    setModalVisible(false);
+    setEditingField(null);
+    setEditValue("");
+  };
+
+  const doSignOut = async () => {
+    try {
+      if (Platform.OS === "web") {
+        await signOut({ redirectUrl: window.location.origin });
+      } else {
+        await signOut();
+      }
+    } catch (e) {
+      console.error("[ProfileScreen] signOut failed:", e);
+      Alert.alert("Error", "Could not log out. Please try again.");
     }
   };
 
-  const canAdd = itemName.trim().length > 0 && selectedCategory !== "" && !quantityError;
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to log out?")) doSignOut();
+    } else {
+      Alert.alert(
+        "Log Out",
+        "Are you sure you want to log out?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Log Out", style: "destructive", onPress: doSignOut },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
+  // Initials fallback
+  const initials = (profileData.name || profileData.username || "?")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  // Resolved photo URI: local pick > Clerk cloud > null (show initials)
+  const resolvedPhotoUri = localPhotoUri ?? user?.imageUrl ?? null;
 
   return (
     <LinearGradient
@@ -260,784 +300,640 @@ export default function PlannerScreen() {
       end={{ x: 1, y: 0 }}
       style={styles.container}
     >
-      {/*
-        FIX: KeyboardAvoidingView must wrap SafeAreaView (or be at the very top),
-        NOT be nested inside it. This prevents the huge gap caused by double
-        inset accounting on iOS and the height-collapse bug on Android.
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
 
-        - iOS:   behavior="padding" + offset = TAB_BAR_HEIGHT
-        - Android: behavior="padding" + offset = 0 works correctly when
-                   KAV is at the root level outside SafeAreaView.
-      */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={TAB_BAR_HEIGHT}
-      >
-        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <SuccessToast
-            toastKey={toastKey}
-            itemName={toastItemName}
-            onDone={() => setToastKey(0)}
-          />
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PADDING }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
+        {/* ── TOP NAV ─────────────────────────────────────── */}
+        <View style={styles.topNav}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.backBtn}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
+            <Ionicons name="chevron-back" size={25} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.topNavTitle}>Profile</Text>
+          <View style={styles.backBtn} />
+        </View>
 
-            {/* ── HERO CARD ─────────────────────────── */}
-            <View style={styles.heroCard}>
-              <Text style={styles.heroLabel}>GROCERY PLANNER</Text>
-              <Text style={styles.heroTitle}>Plan smarter, shop calmer.</Text>
-              <View style={styles.statBoxRow}>
-                {[
-                  { value: pendingCount,      label: "PENDING"       },
-                  { value: highPriorityCount, label: "HIGH PRIORITY" },
-                  { value: totalUnits,        label: "TOTAL UNITS"   },
-                ].map((s) => (
-                  <View key={s.label} style={styles.statBox}>
-                    <LinearGradient
-                      colors={["#5BB8B0", "#007A8A"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.statBoxGradient}
-                    >
-                      <Text style={styles.statBoxLabel}>{s.label}</Text>
-                      <Text style={styles.statBoxValue}>{s.value}</Text>
-                    </LinearGradient>
-                  </View>
-                ))}
-              </View>
-            </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
 
-            {/* ── FREQUENTLY BOUGHT BANNER ─────────── */}
-            <TouchableOpacity
-              onPress={() => setShowFrequent(true)}
-              activeOpacity={0.88}
-              accessibilityLabel="Frequently bought items. Tap to view all."
-              accessibilityRole="button"
-              style={styles.frequentBannerWrapper}
-            >
-              <ImageBackground
-                source={groceryBanner}
-                style={styles.frequentBanner}
-                imageStyle={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
-              >
-                <LinearGradient
-                  colors={["rgba(0,130,150,0.37)", "rgba(123,201,190,0)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.bannerContent}>
-                  <Text style={styles.frequentTitle}>{"Frequently bought\nitems"}</Text>
-                  <Text style={styles.frequentSub}>{"Quickly add items you buy\noften."}</Text>
-                  <View style={styles.viewBtnRow}>
-                    <View style={styles.viewBtn}>
-                      <Text style={styles.viewBtnText}>View</Text>
-                    </View>
-                    <View style={styles.viewBtnCircle}>
-                      <Ionicons name="arrow-forward" size={12} color={colors.teal} />
-                    </View>
-                  </View>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
+          {/* ── USER CARD ─────────────────────────────────── */}
+          <View style={styles.userCard}>
 
-            {/* ── CATEGORIES ───────────────────────── */}
-            <View style={styles.categoriesCard}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Categories</Text>
+            {/* Teal accent strip */}
+            <LinearGradient
+              colors={["#7BC9BE", "#008296"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.cardAccentStrip}
+            />
+
+            <View style={styles.cardBody}>
+
+              {/* Top row: avatar + name + logout pill */}
+              <View style={styles.topRow}>
+
+                {/* ── Avatar with camera badge ── */}
                 <TouchableOpacity
-                  onPress={() => setShowAllCategories(!showAllCategories)}
-                  style={styles.seeAllBtn}
-                  accessibilityLabel={showAllCategories ? "Show fewer categories" : "See all categories"}
+                  onPress={handlePickPhoto}
+                  style={styles.avatarRing}
+                  accessibilityLabel="Change profile photo"
+                  accessibilityRole="button"
+                  activeOpacity={0.85}
+                >
+                  {/* Clipping wrapper keeps circle crop */}
+                  <View style={styles.avatarImageClip}>
+                    {resolvedPhotoUri ? (
+                      <Image
+                        source={{ uri: resolvedPhotoUri }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <LinearGradient
+                        colors={["#7BC9BE", "#008296"]}
+                        style={styles.avatarFallback}
+                      >
+                        <Text style={styles.avatarInitials}>{initials}</Text>
+                      </LinearGradient>
+                    )}
+                  </View>
+
+                  {/* Camera badge */}
+                  <View style={styles.cameraBadge}>
+                    {photoUploading ? (
+                      <Ionicons name="reload-outline" size={10} color="#fff" />
+                    ) : (
+                      <Ionicons name="camera" size={11} color="#fff" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.nameBlock}>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {profileData.username}
+                  </Text>
+                  {profileData.name ? (
+                    <Text style={styles.fullName} numberOfLines={1}>
+                      {profileData.name}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Compact logout pill — top-right */}
+                <TouchableOpacity
+                  style={styles.logoutPill}
+                  onPress={handleLogout}
+                  accessibilityLabel="Log out"
                   accessibilityRole="button"
                 >
-                  <Text style={styles.seeAll}>{showAllCategories ? "Show less" : "See all"}</Text>
-                  <Ionicons
-                    name={showAllCategories ? "chevron-up" : "chevron-down"}
-                    size={12}
-                    color="rgba(255,255,255,0.8)"
-                  />
+                  <Ionicons name="log-out-outline" size={13} color="#E74C3C" />
+                  <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.categoryGrid}>
-                {displayedCategories.map((cat) => {
-                  const isSelected = selectedCategory === cat.name;
-                  const catImage   = CATEGORY_IMAGES[cat.name];
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setSelectedCategory(cat.name as GroceryCategory)}
-                      activeOpacity={0.82}
-                      style={[styles.categoryCardWrapper, isSelected && styles.categorySelectedWrapper]}
-                      accessibilityLabel={`${cat.name} category${isSelected ? ", selected" : ""}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isSelected }}
-                    >
-                      <ImageBackground source={catImage} style={styles.categoryTopImage} resizeMode="cover">
-                        {isSelected && <View style={styles.categorySelectedOverlay} />}
-                        <LinearGradient colors={["transparent", "rgba(0,0,0,0.82)"]} style={styles.categoryGradient}>
-                          <Text style={styles.categoryName}>{cat.name}</Text>
-                          {isSelected && <Ionicons name="checkmark-circle" size={12} color={colors.white} />}
-                        </LinearGradient>
-                      </ImageBackground>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
 
-            {/* ── BUILD YOUR LIST FORM ─────────────── */}
-            <View style={styles.section}>
-              <Text style={styles.buildTitle}>BUILD YOUR LIST</Text>
-              <Text style={styles.buildSub}>Fill in details, then tap Add to List.</Text>
+              {/* Divider */}
+              <View style={styles.divider} />
 
-              <View style={styles.formCard}>
-
-                {/* Item Name */}
-                <Text style={styles.inputLabel}>Item name</Text>
-                <View style={styles.inputRow}>
-                  <Ionicons name="bag-outline" size={16} color={colors.teal} style={{ marginRight: spacing.sm }} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: Squash"
-                    placeholderTextColor="rgba(0,0,0,0.35)"
-                    value={itemName}
-                    onChangeText={setItemName}
-                    returnKeyType="next"
-                    accessibilityLabel="Item name"
-                  />
-                  {itemName.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => setItemName("")}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityLabel="Clear item name"
-                      accessibilityRole="button"
-                    >
-                      <Ionicons name="close-circle" size={16} color="rgba(0,0,0,0.3)" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Quantity */}
-                <Text style={styles.inputLabel}>Quantity</Text>
-                <View style={[styles.inputRow, quantityError ? styles.inputRowError : null]}>
-                  <Ionicons name="pricetag-outline" size={16} color={colors.teal} style={{ marginRight: spacing.sm }} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="E.g. 3"
-                    placeholderTextColor="rgba(0,0,0,0.35)"
-                    keyboardType="numeric"
-                    value={quantity}
-                    onChangeText={handleQuantityChange}
-                    returnKeyType="next"
-                    accessibilityLabel="Quantity"
-                  />
-                </View>
-                {quantityError ? (
-                  <Text style={styles.inputError}>{quantityError}</Text>
-                ) : null}
-
-                {/* Estimated Price */}
-                <Text style={styles.inputLabel}>Estimated price</Text>
-                <View style={styles.inputRow}>
-                  <Ionicons name="cash-outline" size={16} color={colors.teal} style={{ marginRight: spacing.sm }} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: 5.00"
-                    placeholderTextColor="rgba(0,0,0,0.35)"
-                    keyboardType="decimal-pad"
-                    value={estimatedPrice}
-                    onChangeText={setEstimatedPrice}
-                    returnKeyType="done"
-                    accessibilityLabel="Estimated price"
-                  />
-                  {estimatedPrice.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => setEstimatedPrice("")}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityLabel="Clear estimated price"
-                      accessibilityRole="button"
-                    >
-                      <Ionicons name="close-circle" size={16} color="rgba(0,0,0,0.3)" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Total Price Preview */}
-                {totalPrice !== null && (
-                  <View style={styles.totalPreviewRow}>
-                    <Ionicons name="calculator-outline" size={14} color="rgba(255,255,255,0.75)" />
-                    <Text style={styles.totalPreviewText}>
-                      Estimated total:{" "}
-                      <Text style={styles.totalPreviewAmount}>
-                        ₱{totalPrice.toFixed(2)}
-                      </Text>
-                    </Text>
+              {/* Contact rows */}
+              <View style={styles.contactBlock}>
+                <View style={styles.contactRow}>
+                  <View style={styles.contactIconBox}>
+                    <Ionicons name="mail-outline" size={14} color="#008296" />
                   </View>
-                )}
-
-                {/* Priority */}
-                <Text style={styles.inputLabel}>Priority</Text>
-                <View style={styles.priorityRow}>
-                  {(["low", "medium", "high"] as GroceryPriority[]).map((p) => {
-                    const cfg      = PRIORITY_CONFIG[p];
-                    const isActive = selectedPriority === p;
-                    return (
-                      <TouchableOpacity
-                        key={p}
-                        style={[
-                          styles.priorityBtn,
-                          isActive && { backgroundColor: cfg.bg, borderColor: cfg.color },
-                        ]}
-                        onPress={() => setSelectedPriority(p)}
-                        accessibilityLabel={`${cfg.label} priority`}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: isActive }}
-                      >
-                        <View style={[styles.priorityDot, { backgroundColor: cfg.color }]} />
-                        <Text style={[styles.priorityBtnText, isActive && { color: cfg.color, fontWeight: typography.bold }]}>
-                          {cfg.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Category indicator */}
-                <View style={[styles.selectedCatRow, selectedCategory ? styles.selectedCatRowActive : {}]}>
-                  <Ionicons
-                    name={selectedCategory ? "checkmark-circle" : "alert-circle-outline"}
-                    size={15}
-                    color={selectedCategory ? "#2ECC71" : "rgba(255,255,255,0.45)"}
-                  />
-                  <Text style={[styles.selectedCatText, selectedCategory && { color: "rgba(255,255,255,0.9)" }]}>
-                    {selectedCategory ? `Category: ${selectedCategory}` : "No category selected — tap one above"}
+                  <Text style={styles.contactText} numberOfLines={1}>
+                    {profileData.email || "—"}
                   </Text>
                 </View>
 
-                {/* Add button */}
-                <TouchableOpacity
-                  style={[styles.addBtn, (!canAdd || loading) && styles.addBtnDisabled]}
-                  onPress={handleAddItem}
-                  disabled={!canAdd || loading}
-                  activeOpacity={0.85}
-                  accessibilityLabel="Add to list"
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !canAdd || loading }}
-                >
-                  <LinearGradient
-                    colors={canAdd ? ["#7BC9BE", "#008296"] : ["#C5DDD9", "#A8CBCA"]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.addBtnGradient}
-                  >
-                    <Ionicons
-                      name={loading ? "hourglass-outline" : "add-circle-outline"}
-                      size={20}
-                      color={colors.white}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.addBtnText}>{loading ? "Adding…" : "Add to List"}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
+                {profileData.phone ? (
+                  <View style={styles.contactRow}>
+                    <View style={styles.contactIconBox}>
+                      <Ionicons name="call-outline" size={14} color="#008296" />
+                    </View>
+                    <Text style={styles.contactText} numberOfLines={1}>
+                      {profileData.phone}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
 
-      {/* ── MODAL: Frequently Bought ──────────── */}
-      <Modal
-        visible={showFrequent}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowFrequent(false)}
-        accessibilityViewIsModal
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Frequently Bought</Text>
-              <TouchableOpacity
-                onPress={() => setShowFrequent(false)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel="Close frequently bought"
-                accessibilityRole="button"
-              >
-                <View style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={16} color={colors.teal} />
-                </View>
-              </TouchableOpacity>
             </View>
-            <Text style={styles.modalSub}>Tap an item to instantly add it to your list.</Text>
+          </View>
 
-            {FREQUENT_ITEMS.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.frequentItem}
-                onPress={() => handleQuickAdd(item)}
-                disabled={loading}
-                activeOpacity={0.78}
-                accessibilityLabel={`Add ${item.name}, ${item.category}`}
-                accessibilityRole="button"
+          {/* ── USER ACCOUNT SECTION ──────────────────────── */}
+          <View style={styles.glassCard}>
+            <Text style={styles.sectionTitle}>User account</Text>
+            <Text style={styles.sectionSub}>
+              Manage your personal information, account settings, and shopping preferences in GROCIFY.
+            </Text>
+
+            {/* ── Profile Photo field row ── */}
+            <TouchableOpacity
+              style={[styles.fieldRow, styles.photoFieldRow]}
+              onPress={handlePickPhoto}
+              accessibilityLabel="Change profile photo"
+              accessibilityRole="button"
+              activeOpacity={0.8}
+            >
+              <View style={styles.photoFieldLeft}>
+                {/* Mini avatar */}
+                <View style={styles.miniAvatarRing}>
+                  <View style={styles.miniAvatarClip}>
+                    {resolvedPhotoUri ? (
+                      <Image
+                        source={{ uri: resolvedPhotoUri }}
+                        style={styles.miniAvatarImage}
+                      />
+                    ) : (
+                      <LinearGradient
+                        colors={["#7BC9BE", "#008296"]}
+                        style={styles.miniAvatarFallback}
+                      >
+                        <Text style={styles.miniAvatarInitials}>{initials}</Text>
+                      </LinearGradient>
+                    )}
+                  </View>
+                  <View style={styles.miniCamBadge}>
+                    <Ionicons name="camera" size={8} color="#fff" />
+                  </View>
+                </View>
+
+                <View style={styles.fieldLeft}>
+                  <Text style={styles.fieldLabel}>Profile photo</Text>
+                  <Text style={styles.fieldValue}>
+                    {photoUploading ? "Uploading…" : "Tap to upload a photo"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.editBtn}>
+                <Ionicons name="pencil-outline" size={12} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.editText}>Edit</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* ── Other fields ── */}
+            {FIELD_CONFIGS.map((field, idx) => (
+              <View
+                key={field.key}
+                style={[styles.fieldRow, idx < FIELD_CONFIGS.length - 1 && styles.fieldRowBorder]}
               >
-                <View style={styles.frequentEmojiWrap}>
-                  <Text style={styles.frequentItemEmoji}>{item.emoji}</Text>
+                <View style={styles.fieldLeft}>
+                  <Text style={styles.fieldLabel}>{field.label}</Text>
+                  <Text style={styles.fieldValue} numberOfLines={1}>
+                    {profileData[field.key] || "—"}
+                  </Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.frequentItemName}>{item.name}</Text>
-                  <Text style={styles.frequentItemCat}>{item.category}</Text>
-                </View>
-                <View style={styles.quickAddBtn}>
-                  <Ionicons name="add-circle-outline" size={18} color={colors.teal} />
-                  <Text style={styles.quickAddText}>Add</Text>
-                </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openEdit(field)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={`Edit ${field.label}`}
+                  accessibilityRole="button"
+                  style={styles.editBtn}
+                >
+                  <Ionicons name="pencil-outline" size={12} color="rgba(255,255,255,0.85)" />
+                  <Text style={styles.editText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
-        </View>
-      </Modal>
+
+          {/* ── TERMS & POLICIES ──────────────────────────── */}
+          <View style={styles.glassCard}>
+            <Text style={styles.sectionTitle}>GROCIFY Terms &amp; Policies</Text>
+            <Text style={styles.termsIntro}>
+              Welcome to GROCIFY. By using our system, you agree to follow our terms and policies.
+            </Text>
+
+            {TERMS_BULLETS.map((point, i) => (
+              <View key={i} style={styles.bulletRow}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bulletText}>{point}</Text>
+              </View>
+            ))}
+
+            <Text style={styles.termsFooter}>
+              By continuing to use GROCIFY, you agree to these Terms &amp; Policies.
+            </Text>
+          </View>
+
+        </ScrollView>
+      </SafeAreaView>
+
+      {/* ── EDIT MODAL ───────────────────────────────────── */}
+      <EditModal
+        visible={modalVisible}
+        field={editingField}
+        value={editValue}
+        onChange={setEditValue}
+        onSave={handleSave}
+        onCancel={handleCancel}
+      />
     </LinearGradient>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // ── Toast ─────────────────────────────────────────────────
-  toast: {
-    position: "absolute",
-    top: 12,
-    left: spacing.lg,
-    right: spacing.lg,
-    zIndex: 999,
-    backgroundColor: "rgba(18, 58, 60, 0.97)",
-    borderRadius: radius.lg,
+  topNav: {
     flexDirection: "row",
     alignItems: "center",
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    ...shadows.card,
-  },
-  toastIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(46,204,113,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toastBody: { flex: 1 },
-  toastTitle: { color: colors.white, fontWeight: typography.bold, fontSize: typography.base },
-  toastSub:   { color: "rgba(255,255,255,0.55)", fontSize: typography.xs, marginTop: 2 },
-
-  // ── Hero ──────────────────────────────────────────────────
-  heroCard: {
-    backgroundColor: colors.white,
-    margin: spacing.lg,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    ...shadows.card,
-  },
-  heroLabel: {
-    fontSize: typography.xs,
-    color: "#000000",
-    letterSpacing: typography.wide,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
-  },
-  heroTitle: {
-    fontSize: 20,
-    fontWeight: "900" as const,
-    color: colors.teal,
-    marginBottom: spacing.md,
-    lineHeight: 26,
-  },
-  statBoxRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  statBox: {
-    flex: 1,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
-  statBoxGradient: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    alignItems: "flex-start",
     justifyContent: "space-between",
-    minHeight: 64,
-  },
-  statBoxValue: {
-    fontSize: 26,
-    fontWeight: "900" as const,
-    color: colors.white,
-    lineHeight: 30,
-  },
-  statBoxLabel: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.9)",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    textAlign: "left",
-  },
-
-  // ── Frequent Banner ───────────────────────────────────────
-  frequentBannerWrapper: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    borderRadius: radius.xl,
-    overflow: "hidden",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.6)",
-    ...shadows.card,
-  },
-  frequentBanner: {
-    height: 155,
-    flexDirection: "row",
-  },
-  bannerContent: {
-    flex: 1,
-    padding: spacing.lg,
-    justifyContent: "flex-start",
-  },
-  frequentTitle: {
-    color: colors.white,
-    fontWeight: "900",
-    fontSize: 19,
-    lineHeight: 22,
-    marginBottom: 1,
-  },
-  frequentSub: {
-    color: "#008296",
-    fontWeight: "600",
-    fontSize: 12,
-    marginBottom: 21,
-  },
-  viewBtnRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginTop: "auto",
-  },
-  viewBtn: {
-    backgroundColor: colors.teal,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  viewBtnText: { color: colors.white, fontWeight: typography.bold, fontSize: typography.sm },
-  viewBtnCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 16,
-    backgroundColor: colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // ── Categories ────────────────────────────────────────────
-  categoriesCard: {
-    backgroundColor: "rgba(0,0,0,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    borderRadius: radius.xl,
-    paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.09)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.2)",
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
+  backBtn: { width: 40, alignItems: "flex-start" },
+  topNavTitle: {
     color: colors.white,
+    fontSize: typography.xl,
     fontWeight: typography.bold,
-    fontSize: typography.lg,
-  },
-  seeAllBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeAll: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: typography.sm,
-    fontWeight: "800",
   },
 
-  // ── Category Grid ─────────────────────────────────────────
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
+  scrollContent: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: 120,
   },
-  categoryCardWrapper: {
-    width: "23%",
-    borderRadius: radius.lg,
+
+  // ── User Card ──────────────────────────────────────────
+  userCard: {
+    backgroundColor: "rgba(255,255,255,0.97)",
+    borderRadius: radius.xl,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
     ...shadows.card,
   },
-  categorySelectedWrapper: {
-    opacity: 1,
-  },
-  categoryTopImage: {
+  cardAccentStrip: {
+    height: 5,
     width: "100%",
-    height: CARD_SIZE * 1.45,
-    position: "relative",
   },
-  categoryOverlay: { ...StyleSheet.absoluteFillObject },
-  categoryCheckmark: {
-    position: "absolute", top: 5, right: 5,
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.35)",
-    alignItems: "center", justifyContent: "center",
+  cardBody: {
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  categoryName: {
+
+  // Top row
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+
+  // ── Avatar ring (tappable, overflow visible for badge) ──
+  avatarRing: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 2.5,
+    borderColor: "#7BC9BE",
+    overflow: "visible",          // visible so camera badge peeks out
+    flexShrink: 0,
+    shadowColor: "#008296",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  // Inner clip keeps the photo/initials circular
+  avatarImageClip: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 62,
+    height: 62,
+  },
+  avatarFallback: {
+    width: 62,
+    height: 62,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
     color: colors.white,
+    fontSize: 20,
     fontWeight: "900",
-    fontSize: 11,
-    textAlign: "center",
+    letterSpacing: 1,
   },
-  categoryGradient: {
+
+  // Camera badge on main avatar
+  cameraBadge: {
     position: "absolute",
     bottom: 0,
-    left: 0,
     right: 0,
-    height: "70%",
-    justifyContent: "flex-end",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#008296",
     alignItems: "center",
-    flexDirection: "column",
-    paddingBottom: 8,
-  },
-  categorySelectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 3,
-    borderColor: colors.teal,
-    borderRadius: radius.lg,
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
 
-  // ── Section (Build Your List) ─────────────────────────────
-  section: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
-  buildTitle: {
-    color: colors.white,
-    fontWeight: typography.extrabold,
-    fontSize: typography.md,
-    letterSpacing: typography.wide,
-    textTransform: "uppercase",
-  },
-  buildSub: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: typography.sm,
-    marginTop: 4,
-    marginBottom: spacing.md,
-  },
-
-  // ── Form Card ─────────────────────────────────────────────
-  formCard: {
-    backgroundColor: "rgba(0,80,96,0.35)",
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.5)",
-  },
-  inputLabel: {
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: typography.semibold,
-    fontSize: typography.sm,
-    marginBottom: spacing.xs,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(198,231,236,0.75)",
-    borderColor: "rgba(198,231,236,0.8)",
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    height: 46,
-    borderWidth: 1,
-  },
-  inputRowError: { borderWidth: 1.5, borderColor: "#E74C3C" },
-  inputError: {
-    color: "#FFB3A7",
-    fontSize: typography.xs,
-    marginBottom: spacing.md,
-    marginLeft: 4,
-  },
-  input: { flex: 1, height: 46, color: "#006070", fontSize: typography.base },
-
-  // ── Total Price Preview ───────────────────────────────────
-  totalPreviewRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  totalPreviewText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: typography.sm,
-    fontWeight: typography.medium,
-  },
-  totalPreviewAmount: {
-    color: colors.white,
-    fontWeight: typography.bold,
-    fontSize: typography.sm,
-  },
-
-  // ── Priority ──────────────────────────────────────────────
-  priorityRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
-  priorityBtn: {
+  nameBlock: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    gap: 2,
   },
-  priorityDot: { width: 7, height: 7, borderRadius: 3.5 },
-  priorityBtnText: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: typography.sm,
-    fontWeight: typography.medium,
+  userName: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0D1F22",
+    letterSpacing: -0.3,
+  },
+  fullName: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(0,0,0,0.38)",
   },
 
-  // ── Category indicator ────────────────────────────────────
-  selectedCatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  selectedCatRowActive: { backgroundColor: "rgba(46,204,113,0.1)" },
-  selectedCatText: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: typography.xs,
-    fontWeight: typography.medium,
-    flex: 1,
-  },
-
-  // ── Add Button ────────────────────────────────────────────
-  addBtn: { borderRadius: radius.md, overflow: "hidden" },
-  addBtnDisabled: { opacity: 0.55 },
-  addBtnGradient: {
-    paddingVertical: spacing.md + 2,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  addBtnText: { color: colors.white, fontWeight: typography.extrabold, fontSize: typography.lg },
-
-  // ── Modal ─────────────────────────────────────────────────
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    padding: spacing.xl,
-    paddingBottom: MODAL_BOTTOM_PADDING,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: spacing.lg,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontSize: typography.xl,
-    fontWeight: typography.extrabold,
-    color: colors.textPrimary,
-  },
-  modalCloseBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalSub: {
-    color: colors.textSecondary,
-    fontSize: typography.sm,
-    marginBottom: spacing.lg,
-  },
-  frequentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3FAFA",
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: "#D8EEED",
-  },
-  frequentEmojiWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.card,
-  },
-  frequentItemEmoji: { fontSize: 26 },
-  frequentItemName: {
-    fontWeight: typography.bold,
-    fontSize: typography.base,
-    color: colors.textPrimary,
-  },
-  frequentItemCat: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  quickAddBtn: {
+  // Compact logout pill
+  logoutPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#E8F8F6",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    backgroundColor: "rgba(231,76,60,0.07)",
     borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "rgba(231,76,60,0.18)",
+    alignSelf: "flex-start",
+    flexShrink: 0,
   },
-  quickAddText: { color: colors.teal, fontWeight: typography.bold, fontSize: typography.sm },
+  logoutText: {
+    color: "#E74C3C",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(0,130,150,0.1)",
+  },
+
+  // Contact rows
+  contactBlock: {
+    gap: 7,
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  contactIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: "rgba(0,130,150,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  contactText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(0,0,0,0.5)",
+  },
+
+  // ── Glass Card ─────────────────────────────────────────
+  glassCard: {
+    backgroundColor: "rgba(0,0,0,0.09)",
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    padding: spacing.lg,
+  },
+  sectionTitle: {
+    color: colors.white,
+    fontSize: typography.xl,
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  sectionSub: {
+    color: "rgba(240,235,235,0.7)",
+    fontSize: typography.xs,
+    fontWeight: "700",
+    lineHeight: 16,
+    marginBottom: spacing.lg,
+  },
+
+  // ── Profile photo field row ────────────────────────────
+  photoFieldRow: {
+    marginBottom: spacing.sm,
+  },
+  photoFieldLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+
+  // Mini avatar inside the field row
+  miniAvatarRing: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#7BC9BE",
+    overflow: "visible",
+    flexShrink: 0,
+  },
+  miniAvatarClip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  miniAvatarImage: {
+    width: 40,
+    height: 40,
+  },
+  miniAvatarFallback: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniAvatarInitials: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  miniCamBadge: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: "#008296",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.15)",
+  },
+
+  // ── Field rows ─────────────────────────────────────────
+  fieldRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.09)",
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  fieldRowBorder: {},
+  fieldLeft: { flex: 1, paddingRight: spacing.sm },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 10,
+    fontWeight: "700",
+    marginBottom: 2,
+    textTransform: "capitalize",
+  },
+  fieldValue: {
+    color: colors.white,
+    fontSize: typography.base,
+    fontWeight: typography.bold,
+  },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  editText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  // ── Terms ──────────────────────────────────────────────
+  termsIntro: {
+    color: "rgba(240,235,235,0.7)",
+    fontSize: typography.xs,
+    fontWeight: "700",
+    lineHeight: 16,
+    marginBottom: spacing.md,
+  },
+  bulletRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 5,
+  },
+  bullet: {
+    color: colors.white,
+    fontSize: typography.xs,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  bulletText: {
+    flex: 1,
+    color: colors.white,
+    fontSize: typography.xs,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  termsFooter: {
+    color: "rgba(240,235,235,0.7)",
+    fontSize: typography.xs,
+    fontWeight: "700",
+    lineHeight: 16,
+    marginTop: spacing.md,
+  },
+
+  // ── Modal ──────────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  editModalCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    width: "100%",
+    ...shadows.card,
+  },
+  editModalTitle: {
+    fontSize: typography.lg,
+    fontWeight: "900",
+    color: colors.textPrimary ?? "#111",
+    marginBottom: spacing.md,
+  },
+  editInputRow: {
+    backgroundColor: "#F0FAFA",
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: "#C6E7EC",
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    height: 46,
+    justifyContent: "center",
+  },
+  editInput: {
+    flex: 1,
+    color: "#006070",
+    fontSize: typography.base,
+    height: 46,
+  },
+  editModalBtns: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  editCancelBtn: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+  },
+  editCancelText: {
+    color: "#888",
+    fontWeight: typography.bold,
+    fontSize: typography.base,
+  },
+  editSaveBtn: {
+    flex: 1,
+    borderRadius: radius.md,
+    overflow: "hidden",
+  },
+  editSaveBtnGradient: {
+    paddingVertical: spacing.md,
+    alignItems: "center",
+  },
+  editSaveText: {
+    color: colors.white,
+    fontWeight: "900",
+    fontSize: typography.base,
+  },
 });
