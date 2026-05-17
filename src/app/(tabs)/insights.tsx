@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Dimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -312,11 +313,33 @@ export default function InsightsScreen() {
     };
   }, [items]);
 
-  const handleLogout = () =>
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Log Out", style: "destructive", onPress: () => signOut() },
-    ]);
+  const doSignOut = async () => {
+    try {
+      if (Platform.OS === "web") {
+        // On web, Clerk needs a redirectUrl to properly clear the session
+        await signOut({ redirectUrl: window.location.origin });
+      } else {
+        await signOut();
+      }
+    } catch (e) {
+      console.error("[InsightsScreen] signOut failed:", e);
+      Alert.alert("Error", "Could not log out. Please try again.");
+    }
+  };
+
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      // Alert.alert doesn't work well on web — use a direct call
+      if (window.confirm("Are you sure you want to log out?")) {
+        doSignOut();
+      }
+    } else {
+      Alert.alert("Log Out", "Are you sure you want to log out?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log Out", style: "destructive", onPress: doSignOut },
+      ]);
+    }
+  };
 
   const handleClearCompleted = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
