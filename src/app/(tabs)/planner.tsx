@@ -42,17 +42,38 @@ const CATEGORY_IMAGES: Record<string, any> = {
   Seafood:    require("../../../assets/images/categories/seafood.jpg"),
 };
 
+// ─── Item images ──────────────────────────────────────────────────────────────
+
+const ITEM_IMAGES: Record<string, any> = {
+  apple:    require("@/assets/images/items/apple.jpg"),
+  banana:   require("@/assets/images/items/banana.jpg"),
+  carrot:   require("@/assets/images/items/carrot.jpg"),
+  cabbage:  require("@/assets/images/items/cabbage.jpg"),
+  milk:     require("@/assets/images/items/milk.jpg"),
+  cheese:   require("@/assets/images/items/cheese.jpg"),
+  chips:    require("@/assets/images/items/chips.jpg"),
+  chicken:  require("@/assets/images/items/chicken.jpg"),
+  rice:     require("@/assets/images/items/rice.jpg"),
+  shrimp:   require("@/assets/images/items/shrimp.jpg"),
+  bread:    require("@/assets/images/items/bread.jpg"),
+  sugar:    require("@/assets/images/items/sugar.jpg"),
+};
+
+const getItemImage = (name: string) => {
+  const key = name.toLowerCase().replace(/\s+/g, "");
+  return ITEM_IMAGES[key] ?? null;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_PADDING = 16;
-const CARD_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - CARD_PADDING * 2 - spacing.sm * 3 - 2.5 * 2 * 4) / 4;
+const SCREEN_WIDTH   = Dimensions.get("window").width;
+const CARD_PADDING   = 16;
+const CARD_SIZE      = (SCREEN_WIDTH - spacing.lg * 2 - CARD_PADDING * 2 - spacing.sm * 3 - 2.5 * 2 * 4) / 4;
+const FREQ_CARD_SIZE = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm * 3) / 4;
 
 const SCROLL_BOTTOM_PADDING = 120;
-const MODAL_BOTTOM_PADDING = 44;
-
-// Tab bar height — adjust if your tab bar height differs
-const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 83 : 60;
+const MODAL_BOTTOM_PADDING  = 44;
+const TAB_BAR_HEIGHT        = Platform.OS === "ios" ? 83 : 60;
 
 export const CATEGORIES = [
   { id: "1", name: "Fruits",     overlay: "rgba(180,30,30,0.72)"   },
@@ -65,28 +86,42 @@ export const CATEGORIES = [
   { id: "8", name: "Seafood",    overlay: "rgba(30,100,160,0.72)"  },
 ];
 
+// ── Expanded to 12 items matching Figma ───────────────────────────────────────
 export const FREQUENT_ITEMS = [
-  { id: "1", name: "Avocado", category: "Fruits"  as GroceryCategory, emoji: "🥑" },
-  { id: "2", name: "Milk",    category: "Dairy"   as GroceryCategory, emoji: "🥛" },
-  { id: "3", name: "Bread",   category: "Grain"   as GroceryCategory, emoji: "🍞" },
-  { id: "4", name: "Eggs",    category: "Dairy"   as GroceryCategory, emoji: "🥚" },
-  { id: "5", name: "Sugar",   category: "Pantry"  as GroceryCategory, emoji: "🍬" },
-  { id: "6", name: "Rice",    category: "Pantry"  as GroceryCategory, emoji: "🍚" },
+  { id: "1",  name: "Apple",   category: "Fruits"      as GroceryCategory },
+  { id: "2",  name: "Banana",  category: "Fruits"      as GroceryCategory },
+  { id: "3",  name: "Carrot",  category: "Vegetables"  as GroceryCategory },
+  { id: "4",  name: "Cabbage", category: "Vegetables"  as GroceryCategory },
+  { id: "5",  name: "Milk",    category: "Dairy"       as GroceryCategory },
+  { id: "6",  name: "Cheese",  category: "Dairy"       as GroceryCategory },
+  { id: "7",  name: "Chips",   category: "Snacks"      as GroceryCategory },
+  { id: "8",  name: "Chicken", category: "Meat"        as GroceryCategory },
+  { id: "9",  name: "Rice",    category: "Pantry"      as GroceryCategory },
+  { id: "10", name: "Shrimp",  category: "Seafood"     as GroceryCategory },
+  { id: "11", name: "Bread",   category: "Grain"       as GroceryCategory },
+  { id: "12", name: "Sugar",   category: "Pantry"      as GroceryCategory },
 ];
 
 export const PRIORITY_CONFIG = {
-  low:    { label: "Low",    color: "#2ECC71", bg: "rgba(46,204,113,0.15)" },
-  medium: { label: "Medium", color: "#F39C12", bg: "rgba(243,156,18,0.15)" },
-  high:   { label: "High",   color: "#E74C3C", bg: "rgba(231,76,60,0.15)"  },
+  low:    { label: "Low",    color: "#2ECC71", bg: "rgba(46,204,113,0.15)"  },
+  medium: { label: "Medium", color: "#F39C12", bg: "rgba(243,156,18,0.15)"  },
+  high:   { label: "High",   color: "#E74C3C", bg: "rgba(231,76,60,0.15)"   },
+};
+
+const CATEGORY_PILL: Record<string, { bg: string; color: string }> = {
+  Fruits:     { bg: "#FFE8D6", color: "#8B3A0F" },
+  Vegetables: { bg: "#D8F0DA", color: "#1B5E20" },
+  Dairy:      { bg: "#DDEEFF", color: "#0D47A1" },
+  Snacks:     { bg: "#FFF9C4", color: "#7A5800" },
+  Pantry:     { bg: "#EDD9F5", color: "#4A148C" },
+  Grain:      { bg: "#EDE0D4", color: "#4E342E" },
+  Meat:       { bg: "#FCE4EC", color: "#880E4F" },
+  Seafood:    { bg: "#E0F7FA", color: "#006064" },
 };
 
 // ─── SuccessToast ─────────────────────────────────────────────────────────────
 
-interface ToastProps {
-  toastKey: number;
-  itemName: string;
-  onDone: () => void;
-}
+interface ToastProps { toastKey: number; itemName: string; onDone: () => void; }
 
 function SuccessToast({ toastKey, itemName, onDone }: ToastProps) {
   const opacity    = useRef(new Animated.Value(0)).current;
@@ -140,6 +175,145 @@ function SuccessToast({ toastKey, itemName, onDone }: ToastProps) {
     </Animated.View>
   );
 }
+
+// ─── FrequentItemCard ─────────────────────────────────────────────────────────
+
+interface FreqItemCardProps {
+  item: (typeof FREQUENT_ITEMS)[0];
+  onAdd: () => void;
+  loading: boolean;
+}
+
+function FrequentItemCard({ item, onAdd, loading }: FreqItemCardProps) {
+  const [hearted, setHearted] = useState(false);
+  const img     = getItemImage(item.name);
+  const catPill = CATEGORY_PILL[item.category] ?? { bg: "#F0F0F0", color: "#555" };
+
+  return (
+    <View style={freqStyles.card}>
+      {/* Heart icon */}
+      <TouchableOpacity
+        style={freqStyles.heartBtn}
+        onPress={() => setHearted((h) => !h)}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        accessibilityLabel={hearted ? "Unfavourite" : "Favourite"}
+        accessibilityRole="button"
+      >
+        <Ionicons
+          name={hearted ? "heart" : "heart-outline"}
+          size={14}
+          color={hearted ? "#E53935" : "#E53935"}
+        />
+      </TouchableOpacity>
+
+      {/* Image */}
+      <View style={freqStyles.imgWrap}>
+        {img ? (
+          <Image source={img} style={freqStyles.img} resizeMode="cover" />
+        ) : (
+          <View style={freqStyles.imgPlaceholder}>
+            <Text style={{ fontSize: 28 }}>🛒</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Name */}
+      <Text style={freqStyles.name} numberOfLines={1}>{item.name}</Text>
+
+      {/* Category pill */}
+      <View style={[freqStyles.catPill, { backgroundColor: catPill.bg }]}>
+        <Text style={[freqStyles.catPillText, { color: catPill.color }]} numberOfLines={1}>
+          {item.category}
+        </Text>
+      </View>
+
+      {/* Add button */}
+      <TouchableOpacity
+        style={freqStyles.addBtn}
+        onPress={onAdd}
+        disabled={loading}
+        activeOpacity={0.8}
+        accessibilityLabel={`Add ${item.name}`}
+        accessibilityRole="button"
+      >
+        <Ionicons name="add-circle-outline" size={13} color={colors.teal} />
+        <Text style={freqStyles.addBtnText}>Add</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const freqStyles = StyleSheet.create({
+  card: {
+    width: FREQ_CARD_SIZE,
+    backgroundColor: "#F7FAFA",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "#E0EEEE",
+    padding: 8,
+    alignItems: "center",
+    gap: 4,
+    ...shadows.card,
+  },
+  heartBtn: {
+    alignSelf: "flex-end",
+    marginBottom: -2,
+  },
+  imgWrap: {
+    width: FREQ_CARD_SIZE - 20,
+    height: FREQ_CARD_SIZE - 20,
+    borderRadius: radius.md,
+    overflow: "hidden",
+    backgroundColor: "#EEF7F7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  img: {
+    width: "100%",
+    height: "100%",
+  },
+  imgPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EEF7F7",
+  },
+  name: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginTop: 2,
+  },
+  catPill: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: "center",
+  },
+  catPillText: {
+    fontSize: 8,
+    fontWeight: "700",
+  },
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#E8F8F6",
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: "#B2E0DC",
+  },
+  addBtnText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.teal,
+  },
+});
 
 // ─── PlannerScreen ────────────────────────────────────────────────────────────
 
@@ -241,8 +415,7 @@ export default function PlannerScreen() {
     setLoading(true);
     try {
       await addItem({ name: item.name, category: item.category, quantity: 1, priority: "low" });
-      setShowFrequent(false);
-      setTimeout(() => showToast(item.name), 350);
+      setTimeout(() => showToast(item.name), 100);
     } catch (err) {
       console.error("[PlannerScreen] quickAdd failed:", err);
       Alert.alert("Couldn't add item", "Something went wrong. Please try again.");
@@ -261,20 +434,11 @@ export default function PlannerScreen() {
       end={{ x: 1, y: 0 }}
       style={styles.container}
     >
-      {/*
-        FIX: KeyboardAvoidingView must wrap SafeAreaView (or be at the very top),
-        NOT be nested inside it. This prevents the huge gap caused by double
-        inset accounting on iOS and the height-collapse bug on Android.
-
-        - iOS:   behavior="padding" + offset = TAB_BAR_HEIGHT
-        - Android: behavior="padding" + offset = 0 works correctly when
-                   KAV is at the root level outside SafeAreaView.
-      */}
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={TAB_BAR_HEIGHT}
-      >
+  style={{ flex: 1 }}
+  behavior={Platform.OS === "ios" ? "padding" : undefined}
+  keyboardVerticalOffset={0}
+>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <SuccessToast
             toastKey={toastKey}
@@ -283,11 +447,12 @@ export default function PlannerScreen() {
           />
 
           <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PADDING }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-          >
+  showsVerticalScrollIndicator={false}
+  contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PADDING }}
+  keyboardShouldPersistTaps="handled"
+  keyboardDismissMode="interactive"
+  automaticallyAdjustKeyboardInsets={true}
+>
 
             {/* ── HERO CARD ─────────────────────────── */}
             <View style={styles.heroCard}>
@@ -441,9 +606,7 @@ export default function PlannerScreen() {
                     accessibilityLabel="Quantity"
                   />
                 </View>
-                {quantityError ? (
-                  <Text style={styles.inputError}>{quantityError}</Text>
-                ) : null}
+                {quantityError ? <Text style={styles.inputError}>{quantityError}</Text> : null}
 
                 {/* Estimated Price */}
                 <Text style={styles.inputLabel}>Estimated price</Text>
@@ -477,9 +640,7 @@ export default function PlannerScreen() {
                     <Ionicons name="calculator-outline" size={14} color="rgba(255,255,255,0.75)" />
                     <Text style={styles.totalPreviewText}>
                       Estimated total:{" "}
-                      <Text style={styles.totalPreviewAmount}>
-                        ₱{totalPrice.toFixed(2)}
-                      </Text>
+                      <Text style={styles.totalPreviewAmount}>₱{totalPrice.toFixed(2)}</Text>
                     </Text>
                   </View>
                 )}
@@ -554,7 +715,7 @@ export default function PlannerScreen() {
         </SafeAreaView>
       </KeyboardAvoidingView>
 
-      {/* ── MODAL: Frequently Bought ──────────── */}
+      {/* ── MODAL: Frequently Bought Items ────────────────────── */}
       <Modal
         visible={showFrequent}
         transparent
@@ -564,13 +725,20 @@ export default function PlannerScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+
+            {/* Handle */}
             <View style={styles.modalHandle} />
+
+            {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Frequently Bought</Text>
+              <View>
+                <Text style={styles.modalTitle}>Frequently Bought Items</Text>
+                <Text style={styles.modalSub}>Showing {FREQUENT_ITEMS.length} items</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => setShowFrequent(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel="Close frequently bought"
+                accessibilityLabel="Close"
                 accessibilityRole="button"
               >
                 <View style={styles.modalCloseBtn}>
@@ -578,37 +746,30 @@ export default function PlannerScreen() {
                 </View>
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalSub}>Tap an item to instantly add it to your list.</Text>
 
-            {FREQUENT_ITEMS.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.frequentItem}
-                onPress={() => handleQuickAdd(item)}
-                disabled={loading}
-                activeOpacity={0.78}
-                accessibilityLabel={`Add ${item.name}, ${item.category}`}
-                accessibilityRole="button"
-              >
-                <View style={styles.frequentEmojiWrap}>
-                  <Text style={styles.frequentItemEmoji}>{item.emoji}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.frequentItemName}>{item.name}</Text>
-                  <Text style={styles.frequentItemCat}>{item.category}</Text>
-                </View>
-                <View style={styles.quickAddBtn}>
-                  <Ionicons name="add-circle-outline" size={18} color={colors.teal} />
-                  <Text style={styles.quickAddText}>Add</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {/* 4-column grid */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.freqGrid}
+            >
+              {FREQUENT_ITEMS.map((item) => (
+                <FrequentItemCard
+                  key={item.id}
+                  item={item}
+                  onAdd={() => handleQuickAdd(item)}
+                  loading={loading}
+                />
+              ))}
+            </ScrollView>
+
           </View>
         </View>
       </Modal>
     </LinearGradient>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -665,15 +826,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     lineHeight: 26,
   },
-  statBoxRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  statBox: {
-    flex: 1,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
+  statBoxRow: { flexDirection: "row", gap: spacing.sm },
+  statBox: { flex: 1, borderRadius: radius.md, overflow: "hidden" },
   statBoxGradient: {
     paddingVertical: 10,
     paddingHorizontal: 10,
@@ -693,7 +847,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.9)",
     textTransform: "uppercase",
     letterSpacing: 0.6,
-    textAlign: "left",
   },
 
   // ── Frequent Banner ───────────────────────────────────────
@@ -706,15 +859,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.6)",
     ...shadows.card,
   },
-  frequentBanner: {
-    height: 155,
-    flexDirection: "row",
-  },
-  bannerContent: {
-    flex: 1,
-    padding: spacing.lg,
-    justifyContent: "flex-start",
-  },
+  frequentBanner: { height: 155, flexDirection: "row" },
+  bannerContent: { flex: 1, padding: spacing.lg, justifyContent: "flex-start" },
   frequentTitle: {
     color: colors.white,
     fontWeight: "900",
@@ -728,12 +874,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 21,
   },
-  viewBtnRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginTop: "auto",
-  },
+  viewBtnRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: "auto" },
   viewBtn: {
     backgroundColor: colors.teal,
     paddingHorizontal: spacing.md,
@@ -771,38 +912,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: spacing.md,
   },
-  sectionTitle: {
-    color: colors.white,
-    fontWeight: typography.bold,
-    fontSize: typography.lg,
-  },
+  sectionTitle: { color: colors.white, fontWeight: typography.bold, fontSize: typography.lg },
   seeAllBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  seeAll: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: typography.sm,
-    fontWeight: "800",
-  },
-
-  // ── Category Grid ─────────────────────────────────────────
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  categoryCardWrapper: {
-    width: "23%",
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    ...shadows.card,
-  },
-  categorySelectedWrapper: {
-    opacity: 1,
-  },
-  categoryTopImage: {
-    width: "100%",
-    height: CARD_SIZE * 1.45,
-    position: "relative",
-  },
+  seeAll: { color: "rgba(255,255,255,0.85)", fontSize: typography.sm, fontWeight: "800" },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  categoryCardWrapper: { width: "23%", borderRadius: radius.lg, overflow: "hidden", ...shadows.card },
+  categorySelectedWrapper: { opacity: 1 },
+  categoryTopImage: { width: "100%", height: CARD_SIZE * 1.45, position: "relative" },
   categoryOverlay: { ...StyleSheet.absoluteFillObject },
   categoryCheckmark: {
     position: "absolute", top: 5, right: 5,
@@ -810,22 +926,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.35)",
     alignItems: "center", justifyContent: "center",
   },
-  categoryName: {
-    color: colors.white,
-    fontWeight: "900",
-    fontSize: 11,
-    textAlign: "center",
-  },
+  categoryName: { color: colors.white, fontWeight: "900", fontSize: 11, textAlign: "center" },
   categoryGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "70%",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    flexDirection: "column",
-    paddingBottom: 8,
+    position: "absolute", bottom: 0, left: 0, right: 0, height: "70%",
+    justifyContent: "flex-end", alignItems: "center", flexDirection: "column", paddingBottom: 8,
   },
   categorySelectedOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -834,7 +938,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
 
-  // ── Section (Build Your List) ─────────────────────────────
+  // ── Build Your List ───────────────────────────────────────
   section: { marginHorizontal: spacing.lg, marginBottom: spacing.lg },
   buildTitle: {
     color: colors.white,
@@ -843,14 +947,7 @@ const styles = StyleSheet.create({
     letterSpacing: typography.wide,
     textTransform: "uppercase",
   },
-  buildSub: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: typography.sm,
-    marginTop: 4,
-    marginBottom: spacing.md,
-  },
-
-  // ── Form Card ─────────────────────────────────────────────
+  buildSub: { color: "rgba(255,255,255,0.6)", fontSize: typography.sm, marginTop: 4, marginBottom: spacing.md },
   formCard: {
     backgroundColor: "rgba(0,80,96,0.35)",
     borderRadius: radius.xl,
@@ -876,15 +973,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   inputRowError: { borderWidth: 1.5, borderColor: "#E74C3C" },
-  inputError: {
-    color: "#FFB3A7",
-    fontSize: typography.xs,
-    marginBottom: spacing.md,
-    marginLeft: 4,
-  },
+  inputError: { color: "#FFB3A7", fontSize: typography.xs, marginBottom: spacing.md, marginLeft: 4 },
   input: { flex: 1, height: 46, color: "#006070", fontSize: typography.base },
-
-  // ── Total Price Preview ───────────────────────────────────
   totalPreviewRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -897,76 +987,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  totalPreviewText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: typography.sm,
-    fontWeight: typography.medium,
-  },
-  totalPreviewAmount: {
-    color: colors.white,
-    fontWeight: typography.bold,
-    fontSize: typography.sm,
-  },
-
-  // ── Priority ──────────────────────────────────────────────
+  totalPreviewText: { color: "rgba(255,255,255,0.75)", fontSize: typography.sm, fontWeight: typography.medium },
+  totalPreviewAmount: { color: colors.white, fontWeight: typography.bold, fontSize: typography.sm },
   priorityRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   priorityBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 5,
+    flex: 1, paddingVertical: 10, borderRadius: radius.md,
+    alignItems: "center", justifyContent: "center",
+    flexDirection: "row", gap: 5,
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
   },
   priorityDot: { width: 7, height: 7, borderRadius: 3.5 },
-  priorityBtnText: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: typography.sm,
-    fontWeight: typography.medium,
-  },
-
-  // ── Category indicator ────────────────────────────────────
+  priorityBtnText: { color: "rgba(255,255,255,0.65)", fontSize: typography.sm, fontWeight: typography.medium },
   selectedCatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    flexDirection: "row", alignItems: "center", gap: spacing.xs,
+    marginBottom: spacing.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
+    borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.06)",
   },
   selectedCatRowActive: { backgroundColor: "rgba(46,204,113,0.1)" },
-  selectedCatText: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: typography.xs,
-    fontWeight: typography.medium,
-    flex: 1,
-  },
-
-  // ── Add Button ────────────────────────────────────────────
+  selectedCatText: { color: "rgba(255,255,255,0.45)", fontSize: typography.xs, fontWeight: typography.medium, flex: 1 },
   addBtn: { borderRadius: radius.md, overflow: "hidden" },
   addBtnDisabled: { opacity: 0.55 },
-  addBtnGradient: {
-    paddingVertical: spacing.md + 2,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-  },
+  addBtnGradient: { paddingVertical: spacing.md + 2, alignItems: "center", flexDirection: "row", justifyContent: "center" },
   addBtnText: { color: colors.white, fontWeight: typography.extrabold, fontSize: typography.lg },
 
   // ── Modal ─────────────────────────────────────────────────
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
   modalCard: {
     backgroundColor: colors.white,
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: MODAL_BOTTOM_PADDING,
+    maxHeight: "85%",
   },
   modalHandle: {
     width: 40,
@@ -979,66 +1037,33 @@ const styles = StyleSheet.create({
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+    alignItems: "flex-start",
+    marginBottom: spacing.lg,
   },
   modalTitle: {
     fontSize: typography.xl,
     fontWeight: typography.extrabold,
-    color: colors.textPrimary,
+    color: colors.teal,
+  },
+  modalSub: {
+    fontSize: typography.xs,
+    color: colors.textSecondary,
+    marginTop: 3,
   },
   modalCloseBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#F0F0F0",
     alignItems: "center",
     justifyContent: "center",
   },
-  modalSub: {
-    color: colors.textSecondary,
-    fontSize: typography.sm,
-    marginBottom: spacing.lg,
-  },
-  frequentItem: {
+
+  // ── Freq grid ─────────────────────────────────────────────
+  freqGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3FAFA",
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: "#D8EEED",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    paddingBottom: spacing.lg,
   },
-  frequentEmojiWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.card,
-  },
-  frequentItemEmoji: { fontSize: 26 },
-  frequentItemName: {
-    fontWeight: typography.bold,
-    fontSize: typography.base,
-    color: colors.textPrimary,
-  },
-  frequentItemCat: {
-    fontSize: typography.xs,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  quickAddBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#E8F8F6",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
-  quickAddText: { color: colors.teal, fontWeight: typography.bold, fontSize: typography.sm },
 });

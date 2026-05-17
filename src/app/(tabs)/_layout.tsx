@@ -96,14 +96,14 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    backgroundColor: "transparent",
-    paddingTop: 8,
-  },
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  alignItems: "center",
+  paddingTop: 12,
+  paddingBottom: 16,
+},
   pill: {
     flexDirection: "row",
     borderRadius: radius.pill,

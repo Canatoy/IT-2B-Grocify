@@ -243,7 +243,6 @@ function DonutChart({ slices, size = 110 }: { slices: PieSlice[]; size?: number 
         }}
       />
       {wedges}
-      {/* Donut hole */}
       <View
         style={{
           position: "absolute",
@@ -290,7 +289,6 @@ export default function InsightsScreen() {
       0
     );
 
-    // Top purchased items ranked by quantity
     const freq: Record<string, number> = {};
     for (const item of purchased) {
       freq[item.name] = (freq[item.name] ?? 0) + item.quantity;
@@ -313,34 +311,6 @@ export default function InsightsScreen() {
     };
   }, [items]);
 
-  const doSignOut = async () => {
-    try {
-      if (Platform.OS === "web") {
-        // On web, Clerk needs a redirectUrl to properly clear the session
-        await signOut({ redirectUrl: window.location.origin });
-      } else {
-        await signOut();
-      }
-    } catch (e) {
-      console.error("[InsightsScreen] signOut failed:", e);
-      Alert.alert("Error", "Could not log out. Please try again.");
-    }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      // Alert.alert doesn't work well on web — use a direct call
-      if (window.confirm("Are you sure you want to log out?")) {
-        doSignOut();
-      }
-    } else {
-      Alert.alert("Log Out", "Are you sure you want to log out?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Log Out", style: "destructive", onPress: doSignOut },
-      ]);
-    }
-  };
-
   const handleClearCompleted = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
       { text: "Cancel", style: "cancel" },
@@ -353,9 +323,9 @@ export default function InsightsScreen() {
       : user?.username ?? "Username";
 
   const pieSlices: PieSlice[] = [
-    { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items"     },
-    { color: "#2ECC71", value: stats.completedItems, label: "Completed"       },
-    { color: "#7BBFDB", value: stats.remainingItems, label: "Remaining"       },
+    { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items" },
+    { color: "#2ECC71", value: stats.completedItems, label: "Completed"   },
+    { color: "#7BBFDB", value: stats.remainingItems, label: "Remaining"   },
   ];
 
   const completionPct =
@@ -376,9 +346,10 @@ export default function InsightsScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
 
-          {/* ── PROFILE HERO CARD (white, like index.tsx) ───── */}
+          {/* ── HERO CARD ────────────────────────────────────── */}
           <View style={styles.heroCard}>
-            {/* Top row: avatar + name + logout */}
+
+            {/* Profile row — avatar + greeting + name */}
             <View style={styles.profileRow}>
               {user?.imageUrl ? (
                 <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
@@ -391,14 +362,6 @@ export default function InsightsScreen() {
                 <Text style={styles.greetingLabel}>WELCOME BACK</Text>
                 <Text style={styles.username} numberOfLines={1}>{displayName}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-out-outline" size={16} color="#E53935" />
-                <Text style={styles.logoutText}>Logout</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Stat chips */}
@@ -430,15 +393,12 @@ export default function InsightsScreen() {
 
           {/* ── SPENDING ROW ──────────────────────────────────── */}
           <View style={styles.spendingRow}>
-
-            {/* Left — weekly spending + bar chart */}
             <View style={[styles.glassCard, styles.spendingLeft]}>
               <Text style={styles.glassLabel}>WEEKLY SPENDING</Text>
               <Text style={styles.spendingValue}>{fmt(stats.weeklySpending)}</Text>
               <WeeklyBars items={items} />
             </View>
 
-            {/* Right — month + monthly total */}
             <View style={[styles.glassCard, styles.spendingRight]}>
               <View style={styles.monthBadge}>
                 <Text style={styles.monthName}>{MONTH_LABEL}</Text>
@@ -448,7 +408,6 @@ export default function InsightsScreen() {
               <Text style={styles.glassLabel}>MONTHLY TOTAL</Text>
               <Text style={styles.monthlyValue}>{fmt(stats.monthlyTotal)}</Text>
 
-              {/* Mini savings indicator */}
               {stats.monthlyTotal > 0 && stats.weeklySpending > 0 && (
                 <View style={styles.savingsChip}>
                   <Ionicons name="trending-up-outline" size={10} color="#00FF85" />
@@ -458,7 +417,6 @@ export default function InsightsScreen() {
                 </View>
               )}
             </View>
-
           </View>
 
           {/* ── TOP PURCHASED ITEMS ───────────────────────────── */}
@@ -490,12 +448,9 @@ export default function InsightsScreen() {
 
                   return (
                     <View key={idx} style={styles.topItemRow}>
-                      {/* Rank number */}
                       <Text style={[styles.rankNum, { color: idx < 3 ? rankColor : "rgba(255,255,255,0.4)" }]}>
                         {idx + 1}
                       </Text>
-
-                      {/* Image */}
                       {img ? (
                         <Image source={img} style={styles.topItemImg} resizeMode="cover" />
                       ) : (
@@ -503,8 +458,6 @@ export default function InsightsScreen() {
                           <Ionicons name="image-outline" size={13} color="rgba(255,255,255,0.3)" />
                         </View>
                       )}
-
-                      {/* Name + bar */}
                       <View style={styles.topItemInfo}>
                         <Text style={styles.topItemName} numberOfLines={1}>{item.name}</Text>
                         <View style={styles.topItemBarTrack}>
@@ -516,8 +469,6 @@ export default function InsightsScreen() {
                           />
                         </View>
                       </View>
-
-                      {/* Qty badge */}
                       <View style={styles.qtyBadge}>
                         <Text style={styles.qtyBadgeText}>×{item.qty}</Text>
                       </View>
@@ -535,10 +486,7 @@ export default function InsightsScreen() {
             </View>
 
             <View style={styles.stockRow}>
-              {/* Donut with % in centre */}
               <DonutChart slices={pieSlices} size={118} />
-
-              {/* Legend + clear button */}
               <View style={styles.legendCol}>
                 {pieSlices.map((sl, i) => (
                   <View key={i} style={styles.legendRow}>
@@ -549,7 +497,6 @@ export default function InsightsScreen() {
                     </View>
                   </View>
                 ))}
-
                 <TouchableOpacity
                   style={styles.clearBtn}
                   onPress={handleClearCompleted}
@@ -562,7 +509,7 @@ export default function InsightsScreen() {
             </View>
           </View>
 
-          {/* ── FEEDBACK ──────────────────────────────────────── */}
+          {/* ── FEEDBACK BUTTON ───────────────────────────────── */}
           <TouchableOpacity
             style={styles.feedbackBtn}
             activeOpacity={0.85}
@@ -571,14 +518,21 @@ export default function InsightsScreen() {
             }
           >
             <LinearGradient
-              colors={["rgba(255,255,255,0.95)", "rgba(255,255,255,1)"]}
+              colors={["rgba(0,130,150,0.85)", "rgba(0,100,120,0.95)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.feedbackInner}
             >
-              <Ionicons name="chatbox-ellipses-outline" size={19} color={colors.teal} />
-              <Text style={styles.feedbackText}>Send Feedback</Text>
-              <Ionicons name="arrow-forward" size={15} color={colors.teal} style={{ marginLeft: "auto" }} />
+              <View style={styles.feedbackIconWrap}>
+                <Ionicons name="chatbox-ellipses" size={18} color={colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.feedbackTitle}>Send Feedback</Text>
+                <Text style={styles.feedbackSub}>Help us improve GROCIFY</Text>
+              </View>
+              <View style={styles.feedbackArrow}>
+                <Ionicons name="arrow-forward" size={15} color={colors.white} />
+              </View>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -593,34 +547,36 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // ── Hero (white card) ─────────────────────────────────────
+  // ── Hero card ─────────────────────────────────────────────
   heroCard: {
     backgroundColor: colors.white,
     margin: spacing.lg,
     marginBottom: spacing.sm,
     borderRadius: radius.xl,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     ...shadows.card,
   },
+
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 2,
     borderColor: "#B2E0DC",
   },
   avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: "#E8F8F6",
     alignItems: "center",
     justifyContent: "center",
@@ -639,22 +595,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: colors.textPrimary,
   },
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FFF0F0",
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "rgba(229,57,53,0.2)",
-  },
-  logoutText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#E53935",
-  },
+
   heroStatRow: {
     flexDirection: "row",
     gap: 7,
@@ -704,7 +645,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-  // ── Glass card (dark) ─────────────────────────────────────
+  // ── Glass card ────────────────────────────────────────────
   glassCard: {
     backgroundColor: "rgba(0,110,130,0.50)",
     borderRadius: radius.xl,
@@ -749,9 +690,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     marginBottom: 2,
   },
-  monthBadge: {
-    marginBottom: spacing.xs,
-  },
+  monthBadge: { marginBottom: spacing.xs },
   monthName: {
     fontSize: 17,
     fontWeight: "900",
@@ -822,10 +761,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Top Items (ranked list) ───────────────────────────────
-  topItemsList: {
-    gap: spacing.sm,
-  },
+  // ── Top Items ─────────────────────────────────────────────
+  topItemsList: { gap: spacing.sm },
   topItemRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -852,10 +789,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topItemInfo: {
-    flex: 1,
-    gap: 4,
-  },
+  topItemInfo: { flex: 1, gap: 4 },
   topItemName: {
     color: colors.white,
     fontWeight: "700",
@@ -918,10 +852,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.lg,
   },
-  legendCol: {
-    flex: 1,
-    gap: 10,
-  },
+  legendCol: { flex: 1, gap: 10 },
   legendRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -971,13 +902,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Feedback ──────────────────────────────────────────────
+  // ── Feedback button ───────────────────────────────────────
   feedbackBtn: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
     borderRadius: radius.xl,
     overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
     ...shadows.card,
   },
   feedbackInner: {
@@ -985,11 +918,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md + 2,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
-  feedbackText: {
+  feedbackIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  feedbackTitle: {
     fontSize: typography.base,
     fontWeight: "800",
-    color: colors.teal,
+    color: colors.white,
+    lineHeight: 18,
+  },
+  feedbackSub: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
+    lineHeight: 14,
+  },
+  feedbackArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
