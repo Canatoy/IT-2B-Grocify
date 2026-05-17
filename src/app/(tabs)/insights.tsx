@@ -270,9 +270,9 @@ function DonutChart({ slices, size = 110 }: { slices: PieSlice[]; size?: number 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
-  const { signOut }               = useAuth();
-  const { user }                  = useUser();
-  const { items, clearPurchased } = useGroceryStore();
+  const { signOut }                           = useAuth();
+  const { user }                              = useUser();
+  const { items, clearPurchased, displayName } = useGroceryStore();
 
   const stats = useMemo(() => {
     const purchased = items.filter((i) => i.purchased);
@@ -311,16 +311,48 @@ export default function InsightsScreen() {
     };
   }, [items]);
 
+<<<<<<< HEAD
+=======
+  const doSignOut = async () => {
+    try {
+      if (Platform.OS === "web") {
+        await signOut({ redirectUrl: window.location.origin });
+      } else {
+        await signOut();
+      }
+    } catch (e) {
+      console.error("[InsightsScreen] signOut failed:", e);
+      Alert.alert("Error", "Could not log out. Please try again.");
+    }
+  };
+
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to log out?")) doSignOut();
+    } else {
+      Alert.alert("Log Out", "Are you sure you want to log out?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log Out", style: "destructive", onPress: doSignOut },
+      ]);
+    }
+  };
+
+>>>>>>> Improved-Profile
   const handleClearCompleted = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
       { text: "Cancel", style: "cancel" },
       { text: "Clear", style: "destructive", onPress: () => clearPurchased() },
     ]);
 
-  const displayName =
+  // ── Display name: prefer the store value (set/edited in Profile),
+  //    fall back to Clerk data if the store hasn't been seeded yet ──────────
+  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const clerkFallback =
     user?.firstName
       ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
-      : user?.username ?? "Username";
+      : user?.username ?? primaryEmail.split("@")[0] ?? "User";
+
+  const shownName = displayName || clerkFallback;
 
   const pieSlices: PieSlice[] = [
     { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items" },
@@ -346,10 +378,15 @@ export default function InsightsScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
 
+<<<<<<< HEAD
           {/* ── HERO CARD ────────────────────────────────────── */}
           <View style={styles.heroCard}>
 
             {/* Profile row — avatar + greeting + name */}
+=======
+          {/* ── PROFILE HERO CARD ─────────────────────────── */}
+          <View style={styles.heroCard}>
+>>>>>>> Improved-Profile
             <View style={styles.profileRow}>
               {user?.imageUrl ? (
                 <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
@@ -360,11 +397,11 @@ export default function InsightsScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.greetingLabel}>WELCOME BACK</Text>
-                <Text style={styles.username} numberOfLines={1}>{displayName}</Text>
+                {/* ← now reads from the shared store */}
+                <Text style={styles.username} numberOfLines={1}>{shownName}</Text>
               </View>
             </View>
 
-            {/* Stat chips */}
             <View style={styles.heroStatRow}>
               <View style={styles.heroStatChip}>
                 <View style={[styles.heroStatDot, { backgroundColor: "#F59E0B" }]} />
@@ -380,7 +417,6 @@ export default function InsightsScreen() {
               </View>
             </View>
 
-            {/* Completion bar */}
             <View style={styles.heroProgressRow}>
               <View style={styles.heroProgressTrack}>
                 <View
@@ -547,7 +583,10 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
+<<<<<<< HEAD
   // ── Hero card ─────────────────────────────────────────────
+=======
+>>>>>>> Improved-Profile
   heroCard: {
     backgroundColor: colors.white,
     margin: spacing.lg,
@@ -645,7 +684,10 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
+<<<<<<< HEAD
   // ── Glass card ────────────────────────────────────────────
+=======
+>>>>>>> Improved-Profile
   glassCard: {
     backgroundColor: "rgba(0,110,130,0.50)",
     borderRadius: radius.xl,
@@ -656,7 +698,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 
-  // ── Spending row ──────────────────────────────────────────
   spendingRow: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,
@@ -734,7 +775,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ── Section header ────────────────────────────────────────
   sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -761,8 +801,14 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
+<<<<<<< HEAD
   // ── Top Items ─────────────────────────────────────────────
   topItemsList: { gap: spacing.sm },
+=======
+  topItemsList: {
+    gap: spacing.sm,
+  },
+>>>>>>> Improved-Profile
   topItemRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -819,7 +865,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Empty state ───────────────────────────────────────────
   emptyBox: {
     alignItems: "center",
     paddingVertical: spacing.lg,
@@ -846,7 +891,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // ── Stock Level ───────────────────────────────────────────
   stockRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -902,7 +946,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+<<<<<<< HEAD
   // ── Feedback button ───────────────────────────────────────
+=======
+>>>>>>> Improved-Profile
   feedbackBtn: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,

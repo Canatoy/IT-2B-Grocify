@@ -42,6 +42,10 @@ type GroceryStore = {
   isLoading: boolean;
   error: string | null;
 
+  // ── Display name (shared between Profile & Insights) ──────────────────────
+  displayName: string;
+  setDisplayName: (name: string) => void;
+
   loadItems:       () => Promise<void>;
   addItem:         (input: CreateItemInput) => Promise<GroceryItem | void>;
   updateQuantity:  (id: string, quantity: number) => Promise<void>;
@@ -55,9 +59,13 @@ type GroceryStore = {
 };
 
 export const useGroceryStore = create<GroceryStore>((set, get) => ({
-  items:     [],
-  isLoading: false,
-  error:     null,
+  items:       [],
+  isLoading:   false,
+  error:       null,
+  displayName: "",
+
+  // ── Set display name ────────────────────────────────────────────────────────
+  setDisplayName: (name) => set({ displayName: name }),
 
   // ── Load ────────────────────────────────────────────────────────────────────
   loadItems: async () => {
