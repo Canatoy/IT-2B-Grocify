@@ -1,20 +1,20 @@
-import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Image,
-  Dimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useGroceryStore } from "@/store/grocery-store";
+import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useAuth, useUser } from "@clerk/expo";
-import { colors, radius, spacing, shadows, typography } from "../../constants/theme";
-import { useGroceryStore } from "@/store/grocery-store";
+import React, { useMemo } from "react";
+import {
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, radius, shadows, spacing, typography } from "../../constants/theme";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

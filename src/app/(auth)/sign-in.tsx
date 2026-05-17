@@ -1,119 +1,189 @@
 import { FontAwesome, FontAwesome6 } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, shadows } from "../../constants/theme";
 import useSocialAuth from "../hooks/useSocialAuth";
+
 export default function SignInScreen() {
   const { handleSocialAuth, loadingStrategy } = useSocialAuth();
 
   const isGoogleClicked = loadingStrategy === "oauth_google";
   const isAppleClicked = loadingStrategy === "oauth_apple";
   const isGitHubClicked = loadingStrategy === "oauth_github";
-
   const isLoading = isAppleClicked || isGitHubClicked || isGoogleClicked;
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-primary dark:bg-secondary"
-      edges={["top"]}
+    <LinearGradient
+      colors={["#008296", "#7BC9BE"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.gradient}
     >
-      {/* decorative elements */}
-      <View className="absolute -left-16 top-12 h-56 w-56 rounded-full bg-primary/80 dark:bg-background/40" />
-      <View className="absolute right-[-74px] top-40 h-72 w-72 rounded-full bg-primary/70 dark:bg-background/35" />
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
 
-      <View className="px-6 pt-4">
-        <Text className="text-center text-5xl font-extrabold tracking-tight text-primary-foreground uppercase font-mono dark:text-foreground">
-          Grocify
-        </Text>
-
-        <Text className="mt-1 text-center text-[14px] text-primary-foreground/80 dark:text-foreground/75">
-          Plan smarter. Shop happier.
-        </Text>
-
-        <View className="mt-6 rounded-[30px] border border-white/20 bg-white/10 p-3">
-          <Image
-            source={require("../../../assets/images/auth.png")}
-            style={{ width: "100%", height: 300 }}
-            contentFit="contain"
-          />
+        {/* Top area — logo card centered, can be resized freely */}
+        <View style={styles.topArea}>
+          <View style={styles.logoCard}>
+            <Image
+              source={require("../../../assets/images/auth.png")}
+              style={styles.logoImage}
+              contentFit="contain"
+            />
+          </View>
         </View>
-      </View>
 
-      <View className="mt-8 flex-1 rounded-t-[36px] bg-card px-6 pb-8 pt-6">
-        <View className="self-center rounded-full bg-secondary px-3 py-1">
-          <Text className="text-xs font-semibold uppercase tracking-[1px] text-secondary-foreground">
-            Welcome Back
+        {/* Bottom sheet — always pinned to bottom, never moves */}
+        <View style={styles.bottomSheet}>
+          <Text style={styles.welcomeTitle}>WELCOME BACK</Text>
+          <Text style={styles.subtitle}>
+            Choose a social provider and jump right into your professional{"\n"}
+            grocery experience.
           </Text>
-        </View>
 
-        <Text className="mt-2 text-center text-sm leading-6 text-muted-foreground">
-          Choose a social provider and jump right into your personalized grocery
-          experience.
-        </Text>
-
-        <View className="mt-6">
+          {/* Google */}
           <Pressable
-            className={`mb-3 h-14 flex-row items-center rounded-2xl border border-border bg-card px-4 active:opacity-90 ${
-              isLoading ? "opacity-70" : ""
-            }`}
+            style={[styles.button, isLoading && styles.disabled]}
             disabled={isLoading}
             onPress={() => handleSocialAuth("oauth_google")}
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
+            <View style={styles.iconWrap}>
               <Image
                 source={require("../../../assets/images/google.png")}
                 style={{ width: 20, height: 20 }}
               />
             </View>
-
-            <Text className="ml-3 flex-1 text-lg font-semibold text-card-foreground">
-              {isGoogleClicked
-                ? "Connecting Google..."
-                : "Continue with Google"}
+            <Text style={styles.buttonText}>
+              {isGoogleClicked ? "Connecting Google..." : "Continue with Google"}
             </Text>
-
-            <FontAwesome name="angle-right" size={18} color="#5f6e66" />
+            <FontAwesome name="angle-right" size={18} color="#aaa" />
           </Pressable>
 
+          {/* GitHub */}
           <Pressable
-            className={`mb-3 h-14 flex-row items-center rounded-2xl border border-border bg-card px-4 active:opacity-90 ${
-              isLoading ? "opacity-70" : ""
-            }`}
+            style={[styles.button, isLoading && styles.disabled]}
             disabled={isLoading}
             onPress={() => handleSocialAuth("oauth_github")}
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
-              <FontAwesome name="github" size={24} color="#111" />
+            <View style={styles.iconWrap}>
+              <FontAwesome name="github" size={22} color="#111" />
             </View>
-            <Text className="ml-3 flex-1 text-lg font-semibold text-card-foreground">
-              {isGitHubClicked
-                ? "Connecting GitHub..."
-                : "Continue with GitHub"}
+            <Text style={styles.buttonText}>
+              {isGitHubClicked ? "Connecting GitHub..." : "Continue with GitHub"}
             </Text>
-            <FontAwesome name="angle-right" size={18} color="#5f6e66" />
+            <FontAwesome name="angle-right" size={18} color="#aaa" />
           </Pressable>
 
+          {/* Apple */}
           <Pressable
-            className={`mb-3 h-14 flex-row items-center rounded-2xl border border-foreground bg-foreground px-4 active:opacity-90 ${
-              isLoading ? "opacity-70" : ""
-            }`}
+            style={[styles.button, isLoading && styles.disabled]}
             disabled={isLoading}
             onPress={() => handleSocialAuth("oauth_apple")}
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
+            <View style={styles.iconWrap}>
               <FontAwesome6 name="apple" size={22} color="#111" />
             </View>
-            <Text className="ml-3 flex-1 text-lg font-semibold text-background">
+            <Text style={styles.buttonText}>
               {isAppleClicked ? "Connecting Apple..." : "Continue with Apple"}
             </Text>
-            <FontAwesome name="angle-right" size={18} color="#5f6e66" />
+            <FontAwesome name="angle-right" size={18} color="#aaa" />
           </Pressable>
+
+          <Text style={styles.terms}>
+            By continuing, you agree to our Terms and Privacy Policy
+          </Text>
         </View>
 
-        <Text className="mt-3 text-center text-sm leading-5 text-muted-foreground">
-          By continuing, you agree to our Terms and Privacy Policy.
-        </Text>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  topArea: {
+    flex: 1,
+    paddingHorizontal: 40,
+    paddingTop: 20,
+    paddingBottom: 12,
+    justifyContent: "center",
+  },
+  logoCard: {
+    width: 360,
+    height: 330,
+    backgroundColor: colors.white,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    ...shadows.raised,
+  },
+  logoImage: {
+    width: 324,
+    height: 324,
+  },
+  bottomSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 28,
+  },
+  welcomeTitle: {
+    textAlign: "center",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    color: "#1a1a1a",
+    marginBottom: 6,
+  },
+  subtitle: {
+    textAlign: "center",
+    fontSize: 13,
+    color: "#888",
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 54,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 100,
+    backgroundColor: colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    ...shadows.card,
+  },
+  buttonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1a1a1a",
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+  terms: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 11,
+    color: "#aaa",
+  },
+});
