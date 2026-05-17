@@ -270,8 +270,8 @@ function DonutChart({ slices, size = 110 }: { slices: PieSlice[]; size?: number 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
-  const { signOut }                           = useAuth();
-  const { user }                              = useUser();
+  const { signOut }                            = useAuth();
+  const { user }                               = useUser();
   const { items, clearPurchased, displayName } = useGroceryStore();
 
   const stats = useMemo(() => {
@@ -311,8 +311,6 @@ export default function InsightsScreen() {
     };
   }, [items]);
 
-<<<<<<< HEAD
-=======
   const doSignOut = async () => {
     try {
       if (Platform.OS === "web") {
@@ -337,15 +335,12 @@ export default function InsightsScreen() {
     }
   };
 
->>>>>>> Improved-Profile
   const handleClearCompleted = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
       { text: "Cancel", style: "cancel" },
       { text: "Clear", style: "destructive", onPress: () => clearPurchased() },
     ]);
 
-  // ── Display name: prefer the store value (set/edited in Profile),
-  //    fall back to Clerk data if the store hasn't been seeded yet ──────────
   const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? "";
   const clerkFallback =
     user?.firstName
@@ -378,15 +373,8 @@ export default function InsightsScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
 
-<<<<<<< HEAD
-          {/* ── HERO CARD ────────────────────────────────────── */}
-          <View style={styles.heroCard}>
-
-            {/* Profile row — avatar + greeting + name */}
-=======
           {/* ── PROFILE HERO CARD ─────────────────────────── */}
           <View style={styles.heroCard}>
->>>>>>> Improved-Profile
             <View style={styles.profileRow}>
               {user?.imageUrl ? (
                 <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
@@ -397,7 +385,6 @@ export default function InsightsScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.greetingLabel}>WELCOME BACK</Text>
-                {/* ← now reads from the shared store */}
                 <Text style={styles.username} numberOfLines={1}>{shownName}</Text>
               </View>
             </View>
@@ -477,8 +464,8 @@ export default function InsightsScreen() {
             ) : (
               <View style={styles.topItemsList}>
                 {stats.topItems.map((item, idx) => {
-                  const img      = getItemImage(item.name);
-                  const barWidth = (item.qty / stats.maxQty) * 100;
+                  const img        = getItemImage(item.name);
+                  const barWidth   = (item.qty / stats.maxQty) * 100;
                   const rankColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
                   const rankColor  = rankColors[idx] ?? "rgba(255,255,255,0.3)";
 
@@ -583,10 +570,6 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-<<<<<<< HEAD
-  // ── Hero card ─────────────────────────────────────────────
-=======
->>>>>>> Improved-Profile
   heroCard: {
     backgroundColor: colors.white,
     margin: spacing.lg,
@@ -597,7 +580,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     ...shadows.card,
   },
-
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -649,21 +631,10 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
-  heroStatDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  heroStatText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  heroProgressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  heroStatDot: { width: 7, height: 7, borderRadius: 3.5 },
+  heroStatText: { fontSize: 11, fontWeight: "700", color: colors.textPrimary },
+
+  heroProgressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroProgressTrack: {
     flex: 1,
     height: 5,
@@ -671,11 +642,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
-  heroProgressFill: {
-    height: "100%",
-    backgroundColor: "#007A8A",
-    borderRadius: 4,
-  },
+  heroProgressFill: { height: "100%", backgroundColor: "#007A8A", borderRadius: 4 },
   heroProgressPct: {
     fontSize: 10,
     color: colors.textMuted,
@@ -684,10 +651,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-<<<<<<< HEAD
-  // ── Glass card ────────────────────────────────────────────
-=======
->>>>>>> Improved-Profile
   glassCard: {
     backgroundColor: "rgba(0,110,130,0.50)",
     borderRadius: radius.xl,
@@ -704,18 +667,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     gap: spacing.sm,
   },
-  spendingLeft: {
-    flex: 1.25,
-    marginHorizontal: 0,
-    marginTop: 0,
-    padding: spacing.md,
-  },
-  spendingRight: {
-    flex: 1,
-    marginHorizontal: 0,
-    marginTop: 0,
-    padding: spacing.md,
-  },
+  spendingLeft:  { flex: 1.25, marginHorizontal: 0, marginTop: 0, padding: spacing.md },
+  spendingRight: { flex: 1,    marginHorizontal: 0, marginTop: 0, padding: spacing.md },
+
   glassLabel: {
     fontSize: 9,
     fontWeight: "800",
@@ -731,31 +685,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     marginBottom: 2,
   },
-  monthBadge: { marginBottom: spacing.xs },
-  monthName: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: colors.white,
-    letterSpacing: 0.3,
-    lineHeight: 20,
-  },
-  monthYear: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.55)",
-  },
-  monthDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    marginVertical: spacing.sm,
-  },
-  monthlyValue: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: colors.white,
-    letterSpacing: -0.3,
-    marginTop: 2,
-  },
+  monthBadge:   { marginBottom: spacing.xs },
+  monthName:    { fontSize: 17, fontWeight: "900", color: colors.white, letterSpacing: 0.3, lineHeight: 20 },
+  monthYear:    { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.55)" },
+  monthDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.15)", marginVertical: spacing.sm },
+  monthlyValue: { fontSize: 15, fontWeight: "900", color: colors.white, letterSpacing: -0.3, marginTop: 2 },
+
   savingsChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -769,11 +704,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,255,133,0.25)",
   },
-  savingsText: {
-    fontSize: 9,
-    color: "#00FF85",
-    fontWeight: "700",
-  },
+  savingsText: { fontSize: 9, color: "#00FF85", fontWeight: "700" },
 
   sectionHeaderRow: {
     flexDirection: "row",
@@ -781,52 +712,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: colors.white,
-    flex: 1,
-  },
-  sectionBadge: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionBadgeText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: "800",
-  },
+  sectionTitle:     { fontSize: 15, fontWeight: "900", color: colors.white, flex: 1 },
+  sectionBadge:     { backgroundColor: "rgba(255,255,255,0.22)", width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  sectionBadgeText: { fontSize: 11, color: colors.white, fontWeight: "800" },
 
-<<<<<<< HEAD
-  // ── Top Items ─────────────────────────────────────────────
   topItemsList: { gap: spacing.sm },
-=======
-  topItemsList: {
-    gap: spacing.sm,
-  },
->>>>>>> Improved-Profile
-  topItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  rankNum: {
-    fontSize: 13,
-    fontWeight: "900",
-    width: 18,
-    textAlign: "center",
-  },
-  topItemImg: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
+  topItemRow:   { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rankNum:      { fontSize: 13, fontWeight: "900", width: 18, textAlign: "center" },
+  topItemImg:   { width: 36, height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
   topItemImgPlaceholder: {
     width: 36,
     height: 36,
@@ -835,22 +728,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topItemInfo: { flex: 1, gap: 4 },
-  topItemName: {
-    color: colors.white,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  topItemBarTrack: {
-    height: 5,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  topItemBar: {
-    height: "100%",
-    borderRadius: 3,
-  },
+  topItemInfo:     { flex: 1, gap: 4 },
+  topItemName:     { color: colors.white, fontWeight: "700", fontSize: 13 },
+  topItemBarTrack: { height: 5, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 3, overflow: "hidden" },
+  topItemBar:      { height: "100%", borderRadius: 3 },
+
   qtyBadge: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: radius.pill,
@@ -859,17 +741,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  qtyBadgeText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: "800",
-  },
+  qtyBadgeText: { fontSize: 11, color: colors.white, fontWeight: "800" },
 
-  emptyBox: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    gap: spacing.sm,
-  },
+  emptyBox: { alignItems: "center", paddingVertical: spacing.lg, gap: spacing.sm },
   emptyIconWrap: {
     width: 64,
     height: 64,
@@ -879,41 +753,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: colors.white,
-  },
-  emptyText: {
-    fontSize: typography.sm,
-    color: "rgba(255,255,255,0.45)",
-    textAlign: "center",
-    lineHeight: 19,
-  },
+  emptyTitle: { fontSize: 15, fontWeight: "800", color: colors.white },
+  emptyText:  { fontSize: typography.sm, color: "rgba(255,255,255,0.45)", textAlign: "center", lineHeight: 19 },
 
-  stockRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-  },
+  stockRow:  { flexDirection: "row", alignItems: "center", gap: spacing.lg },
   legendCol: { flex: 1, gap: 10 },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    flexShrink: 0,
-  },
-  legendLabel: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.75)",
-    fontWeight: "600",
-    flex: 1,
-  },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  legendLabel: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: "600", flex: 1 },
   legendCountBadge: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 6,
@@ -922,11 +769,8 @@ const styles = StyleSheet.create({
     minWidth: 26,
     alignItems: "center",
   },
-  legendCount: {
-    fontSize: 12,
-    color: colors.white,
-    fontWeight: "800",
-  },
+  legendCount: { fontSize: 12, color: colors.white, fontWeight: "800" },
+
   clearBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -940,16 +784,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
     alignSelf: "flex-start",
   },
-  clearBtnText: {
-    fontSize: 10,
-    color: "#FF6B6B",
-    fontWeight: "700",
-  },
+  clearBtnText: { fontSize: 10, color: "#FF6B6B", fontWeight: "700" },
 
-<<<<<<< HEAD
-  // ── Feedback button ───────────────────────────────────────
-=======
->>>>>>> Improved-Profile
   feedbackBtn: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
@@ -977,18 +813,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  feedbackTitle: {
-    fontSize: typography.base,
-    fontWeight: "800",
-    color: colors.white,
-    lineHeight: 18,
-  },
-  feedbackSub: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.6)",
-    lineHeight: 14,
-  },
+  feedbackTitle: { fontSize: typography.base, fontWeight: "800", color: colors.white, lineHeight: 18 },
+  feedbackSub:   { fontSize: 10, fontWeight: "500", color: "rgba(255,255,255,0.6)", lineHeight: 14 },
   feedbackArrow: {
     width: 28,
     height: 28,

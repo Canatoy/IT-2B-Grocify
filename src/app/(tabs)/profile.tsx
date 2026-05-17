@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 import { useGroceryStore } from "@/store/grocery-store";
 import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
@@ -939,4 +937,3 @@ const styles = StyleSheet.create({
     fontSize: typography.base,
   },
 });
->>>>>>> Improved-Profile

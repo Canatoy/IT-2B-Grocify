@@ -96,16 +96,6 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   wrapper: {
-<<<<<<< HEAD
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  alignItems: "center",
-  paddingTop: 12,
-  paddingBottom: 16,
-},
-=======
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -115,7 +105,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   // ✅ same pill shape/sizing, just LinearGradient instead of white background
->>>>>>> Improved-Profile
   pill: {
   flexDirection: "row",
   borderRadius: radius.pill,
