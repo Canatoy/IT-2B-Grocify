@@ -2,6 +2,7 @@ import { useGroceryStore } from "@/store/grocery-store";
 import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import React, { useMemo } from "react";
 import {
   Alert,
@@ -562,12 +563,10 @@ export default function InsightsScreen() {
           <TouchableOpacity
             style={styles.feedbackBtn}
             activeOpacity={0.85}
-            onPress={() =>
-              Alert.alert("Feedback", "Thank you! Feedback feature coming soon.")
-            }
-          >
-            <LinearGradient
-              colors={["rgba(0,130,150,0.85)", "rgba(0,100,120,0.95)"]}
+            onPress={() => router.push("/ReportBug")}
+>
+  <LinearGradient
+              colors={["rgba(255,255,255,0.95)", "rgba(255,255,255,1)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.feedbackInner}
