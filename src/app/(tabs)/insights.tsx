@@ -566,7 +566,7 @@ export default function InsightsScreen() {
             onPress={() => router.push("/ReportBug")}
 >
   <LinearGradient
-              colors={["rgba(255,255,255,0.95)", "rgba(255,255,255,1)"]}
+              colors={["#008296", "#007A8A"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.feedbackInner}
