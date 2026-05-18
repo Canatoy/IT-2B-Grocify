@@ -1,13 +1,12 @@
+import emailjs from "@emailjs/browser";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as MailComposer from "expo-mail-composer";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
     Alert,
     Image,
     KeyboardAvoidingView,
-    Linking,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,6 +16,10 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const SERVICE_ID  = "service_tb1t82m";
+const TEMPLATE_ID = "template_h1hv41r";
+const PUBLIC_KEY  = "KyZTjpiC5yApNSp_5";
 
 export default function ReportBugScreen() {
   const [form, setForm] = useState({
@@ -36,51 +39,22 @@ export default function ReportBugScreen() {
 
     setSending(true);
 
-    const to = "badanakenchie@gmail.com";
-    const subject = "Bug Report" + (form.name ? " from " + form.name : "");
-    const body =
-      "Name: " + (form.name || "Not provided") + "\n" +
-      "Email: " + (form.email || "Not provided") + "\n" +
-      "May contact: " + (form.contact === "yes" ? "Yes" : "No") + "\n\n" +
-      "Description:\n" + form.description;
-
     try {
-      if (Platform.OS === "web") {
-        // Web: open Gmail compose in new tab
-        const gmailUrl =
-          "https://mail.google.com/mail/?view=cm&fs=1" +
-          "&to=" + encodeURIComponent(to) +
-          "&su=" + encodeURIComponent(subject) +
-          "&body=" + encodeURIComponent(body);
-        window.open(gmailUrl, "_blank");
-        setSent(true);
-      } else {
-        // Native (iOS / Android)
-        const isAvailable = await MailComposer.isAvailableAsync();
-        if (!isAvailable) {
-          // Fallback to mailto if no mail app
-          await Linking.openURL(
-            "mailto:" + to +
-            "?subject=" + encodeURIComponent(subject) +
-            "&body=" + encodeURIComponent(body)
-          );
-          setSent(true);
-          return;
-        }
-
-        const result = await MailComposer.composeAsync({
-          recipients: [to],
-          subject,
-          body,
-        });
-
-        if (
-          result.status === MailComposer.MailComposerStatus.SENT ||
-          result.status === MailComposer.MailComposerStatus.SAVED
-        ) {
-          setSent(true);
-        }
-      }
+      await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        {
+          from_name:   form.name  || "Not provided",
+          from_email:  form.email || "Not provided",
+          name:        form.name  || "Not provided",
+          email:       form.email || "Not provided",
+          description: form.description,
+          contact:     form.contact === "yes" ? "Yes" : "No",
+          title:       "Bug Report",
+        },
+        PUBLIC_KEY
+      );
+      setSent(true);
     } catch (error) {
       Alert.alert("Error", "Could not send report. Please try again.");
     } finally {
@@ -245,7 +219,7 @@ export default function ReportBugScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.submitBtnText}>
-                      {sending ? "Opening mail…" : "Send report"}
+                      {sending ? "Sending…" : "Send report"}
                     </Text>
                   </TouchableOpacity>
 
