@@ -165,7 +165,6 @@ export default function ProfileScreen() {
     phone:    user?.primaryPhoneNumber?.phoneNumber ?? "",
   });
 
-  // ── Photo upload state ──────────────────────────────────
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
 
@@ -177,7 +176,6 @@ export default function ProfileScreen() {
   const [editValue,    setEditValue]    = useState("");
   const [modalVisible, setModalVisible] = useState(false);
 
-  // ── Photo picker handler ────────────────────────────────
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -213,7 +211,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ── Field edit handlers ─────────────────────────────────
   const openEdit = (field: FieldConfig) => {
     setEditingField(field);
     setEditValue(profileData[field.key]);
@@ -282,7 +279,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // Initials fallback
   const initials = (profileData.name || profileData.username || "?")
     .split(" ")
     .map((w) => w[0])
@@ -290,7 +286,6 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
-  // Resolved photo URI: local pick > Clerk cloud > null (show initials)
   const resolvedPhotoUri = localPhotoUri ?? user?.imageUrl ?? null;
 
   return (
@@ -336,10 +331,8 @@ export default function ProfileScreen() {
 
             <View style={styles.cardBody}>
 
-              {/* Top row: avatar + name + logout pill */}
-              <View style={styles.topRow}>
-
-                {/* ── Avatar with camera badge ── */}
+              {/* ── Avatar centered + name stacked ── */}
+              <View style={styles.avatarSection}>
                 <TouchableOpacity
                   onPress={handlePickPhoto}
                   style={styles.avatarRing}
@@ -347,60 +340,39 @@ export default function ProfileScreen() {
                   accessibilityRole="button"
                   activeOpacity={0.85}
                 >
-                  {/* Clipping wrapper keeps circle crop */}
                   <View style={styles.avatarImageClip}>
                     {resolvedPhotoUri ? (
-                      <Image
-                        source={{ uri: resolvedPhotoUri }}
-                        style={styles.avatarImage}
-                      />
+                      <Image source={{ uri: resolvedPhotoUri }} style={styles.avatarImage} />
                     ) : (
-                      <LinearGradient
-                        colors={["#7BC9BE", "#008296"]}
-                        style={styles.avatarFallback}
-                      >
+                      <LinearGradient colors={["#7BC9BE", "#008296"]} style={styles.avatarFallback}>
                         <Text style={styles.avatarInitials}>{initials}</Text>
                       </LinearGradient>
                     )}
                   </View>
 
-                  {/* Camera badge */}
                   <View style={styles.cameraBadge}>
-                    {photoUploading ? (
-                      <Ionicons name="reload-outline" size={10} color="#fff" />
-                    ) : (
-                      <Ionicons name="camera" size={11} color="#fff" />
-                    )}
+                    {photoUploading
+                      ? <Ionicons name="reload-outline" size={10} color="#fff" />
+                      : <Ionicons name="camera" size={11} color="#fff" />}
                   </View>
                 </TouchableOpacity>
 
-                <View style={styles.nameBlock}>
-                  <Text style={styles.userName} numberOfLines={1}>
-                    {profileData.username}
-                  </Text>
-                  {profileData.name ? (
-                    <Text style={styles.fullName} numberOfLines={1}>
-                      {profileData.name}
-                    </Text>
-                  ) : null}
-                </View>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {profileData.name || profileData.username}
+                </Text>
 
-                {/* Compact logout pill — top-right */}
-                <TouchableOpacity
-                  style={styles.logoutPill}
-                  onPress={handleLogout}
-                  accessibilityLabel="Log out"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="log-out-outline" size={13} color="#E74C3C" />
-                  <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
+                {profileData.name && profileData.username ? (
+                  <View style={styles.handlePill}>
+                    <Ionicons name="at" size={10} color="#008296" />
+                    <Text style={styles.handleText}>{profileData.username}</Text>
+                  </View>
+                ) : null}
               </View>
 
-              {/* Divider */}
+              {/* ── Divider ── */}
               <View style={styles.divider} />
 
-              {/* Contact rows */}
+              {/* ── Contact rows ── */}
               <View style={styles.contactBlock}>
                 <View style={styles.contactRow}>
                   <View style={styles.contactIconBox}>
@@ -423,6 +395,17 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
+              {/* ── Logout — full-width subtle row ── */}
+              <TouchableOpacity
+                style={styles.logoutRow}
+                onPress={handleLogout}
+                accessibilityLabel="Log out"
+                accessibilityRole="button"
+              >
+                <Ionicons name="log-out-outline" size={15} color="#E74C3C" />
+                <Text style={styles.logoutText}>Log Out</Text>
+              </TouchableOpacity>
+
             </View>
           </View>
 
@@ -442,19 +425,12 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.photoFieldLeft}>
-                {/* Mini avatar */}
                 <View style={styles.miniAvatarRing}>
                   <View style={styles.miniAvatarClip}>
                     {resolvedPhotoUri ? (
-                      <Image
-                        source={{ uri: resolvedPhotoUri }}
-                        style={styles.miniAvatarImage}
-                      />
+                      <Image source={{ uri: resolvedPhotoUri }} style={styles.miniAvatarImage} />
                     ) : (
-                      <LinearGradient
-                        colors={["#7BC9BE", "#008296"]}
-                        style={styles.miniAvatarFallback}
-                      >
+                      <LinearGradient colors={["#7BC9BE", "#008296"]} style={styles.miniAvatarFallback}>
                         <Text style={styles.miniAvatarInitials}>{initials}</Text>
                       </LinearGradient>
                     )}
@@ -581,113 +557,93 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   cardBody: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     gap: spacing.md,
   },
 
-  // Top row
-  topRow: {
-    flexDirection: "row",
+  // ── Avatar section ─────────────────────────────────────
+  avatarSection: {
     alignItems: "center",
-    gap: spacing.md,
+    gap: 6,
   },
-
-  // ── Avatar ring (tappable, overflow visible for badge) ──
   avatarRing: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 2.5,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 3,
     borderColor: "#7BC9BE",
     overflow: "visible",
-    flexShrink: 0,
     shadowColor: "#008296",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 2,
   },
   avatarImageClip: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     overflow: "hidden",
   },
-  avatarImage: {
-    width: 62,
-    height: 62,
-  },
+  avatarImage: { width: 74, height: 74 },
   avatarFallback: {
-    width: 62,
-    height: 62,
+    width: 74,
+    height: 74,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitials: {
     color: colors.white,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "900",
     letterSpacing: 1,
   },
-
   cameraBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: "#008296",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#fff",
   },
-
-  nameBlock: {
-    flex: 1,
-    gap: 2,
-  },
   userName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "900",
     color: "#0D1F22",
     letterSpacing: -0.3,
+    textAlign: "center",
   },
-  fullName: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "rgba(0,0,0,0.38)",
-  },
-
-  logoutPill: {
+  handlePill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(231,76,60,0.07)",
-    borderRadius: radius.pill,
+    gap: 2,
+    backgroundColor: "rgba(0,130,150,0.07)",
+    borderRadius: 20,
     paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "rgba(231,76,60,0.18)",
-    alignSelf: "flex-start",
-    flexShrink: 0,
+    paddingVertical: 3,
   },
-  logoutText: {
-    color: "#E74C3C",
+  handleText: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.1,
+    color: "#008296",
   },
 
+  // ── Divider ────────────────────────────────────────────
   divider: {
     height: 1,
     backgroundColor: "rgba(0,130,150,0.1)",
   },
 
-  contactBlock: {
-    gap: 7,
-  },
+  // ── Contact rows ───────────────────────────────────────
+  contactBlock: { gap: 7 },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -706,6 +662,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "rgba(0,0,0,0.5)",
+  },
+
+  // ── Logout row ─────────────────────────────────────────
+  logoutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(231,76,60,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(231,76,60,0.15)",
+  },
+  logoutText: {
+    color: "#E74C3C",
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   // ── Glass Card ─────────────────────────────────────────
@@ -730,16 +704,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  photoFieldRow: {
-    marginBottom: spacing.sm,
-  },
+  photoFieldRow: { marginBottom: spacing.sm },
   photoFieldLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     flex: 1,
   },
-
   miniAvatarRing: {
     width: 40,
     height: 40,
@@ -755,10 +726,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
   },
-  miniAvatarImage: {
-    width: 40,
-    height: 40,
-  },
+  miniAvatarImage: { width: 40, height: 40 },
   miniAvatarFallback: {
     width: 40,
     height: 40,
