@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     borderRadius: 31,
     borderWidth: 2.5,
     borderColor: "#7BC9BE",
-    overflow: "visible",          // visible so camera badge peeks out
+    overflow: "visible",
     flexShrink: 0,
     shadowColor: "#008296",
     shadowOffset: { width: 0, height: 2 },
@@ -607,7 +607,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
-  // Inner clip keeps the photo/initials circular
   avatarImageClip: {
     width: 62,
     height: 62,
@@ -631,7 +630,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Camera badge on main avatar
   cameraBadge: {
     position: "absolute",
     bottom: 0,
@@ -662,7 +660,6 @@ const styles = StyleSheet.create({
     color: "rgba(0,0,0,0.38)",
   },
 
-  // Compact logout pill
   logoutPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -683,13 +680,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
 
-  // Divider
   divider: {
     height: 1,
     backgroundColor: "rgba(0,130,150,0.1)",
   },
 
-  // Contact rows
   contactBlock: {
     gap: 7,
   },
@@ -735,7 +730,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  // ── Profile photo field row ────────────────────────────
   photoFieldRow: {
     marginBottom: spacing.sm,
   },
@@ -746,7 +740,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Mini avatar inside the field row
   miniAvatarRing: {
     width: 40,
     height: 40,

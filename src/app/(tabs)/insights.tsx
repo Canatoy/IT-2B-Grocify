@@ -7,12 +7,11 @@ import {
   Alert,
   Dimensions,
   Image,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radius, shadows, spacing, typography } from "../../constants/theme";
@@ -76,6 +75,38 @@ const now         = new Date();
 const MONTH_LABEL = now.toLocaleString("en-PH", { month: "long" }).toUpperCase();
 const YEAR_LABEL  = now.getFullYear();
 
+// ─── Helper: resolve which week of the month a date falls in ─────────────────
+//
+//  Day 1–7   → W1 (index 0)
+//  Day 8–14  → W2 (index 1)
+//  Day 15–21 → W3 (index 2)
+//  Day 22+   → W4 (index 3)
+//
+function getWeekIndex(date: Date): number {
+  const day = date.getDate();
+  if (day <= 7)  return 0;
+  if (day <= 14) return 1;
+  if (day <= 21) return 2;
+  return 3;
+}
+
+// ─── Helper: parse item creation date from item.id or item.createdAt ─────────
+//
+// Zustand stores typically use Date.now().toString() as an id, e.g. "1716000000000".
+// If the store adds a createdAt field instead, that is preferred.
+//
+function resolveItemDate(item: any): Date {
+  // 1. Explicit createdAt field
+  if (item.createdAt) return new Date(item.createdAt);
+
+  // 2. Numeric-looking id that looks like a ms timestamp (13 digits)
+  const ts = Number(item.id);
+  if (!isNaN(ts) && item.id.length >= 12) return new Date(ts);
+
+  // 3. Default to right now (item placed in current week)
+  return new Date();
+}
+
 // ─── Weekly Bar Chart ─────────────────────────────────────────────────────────
 
 function WeeklyBars({
@@ -84,16 +115,30 @@ function WeeklyBars({
   items: ReturnType<typeof useGroceryStore>["items"];
 }) {
   const weeklyTotals = useMemo(() => {
-    const weeks = [0, 0, 0, 0];
+    const weeks        = [0, 0, 0, 0];
+    const currentMonth = now.getMonth();
+    const currentYear  = now.getFullYear();
+
     for (const item of items) {
       if (!item.purchased) continue;
+
       const val =
         item.totalPrice ??
         (item.estimatedPrice != null ? item.estimatedPrice * item.quantity : 0);
-      const weekIndex =
-        Math.abs(item.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % 4;
-      weeks[weekIndex] += val;
+
+      if (val <= 0) continue;
+
+      const itemDate = resolveItemDate(item);
+
+      // Only bucket items from the current month/year
+      if (
+        itemDate.getMonth()    !== currentMonth ||
+        itemDate.getFullYear() !== currentYear
+      ) continue;
+
+      weeks[getWeekIndex(itemDate)] += val;
     }
+
     return weeks;
   }, [items]);
 
@@ -114,7 +159,11 @@ function WeeklyBars({
             )}
             <View style={barStyles.barTrack}>
               <LinearGradient
-                colors={active ? ["#00FF85", "#00D4A8"] : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.08)"]}
+                colors={
+                  active
+                    ? ["#00FF85", "#00D4A8"]
+                    : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.08)"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={[barStyles.bar, { height: barH }]}
@@ -270,9 +319,11 @@ function DonutChart({ slices, size = 110 }: { slices: PieSlice[]; size?: number 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
-  const { signOut }                            = useAuth();
-  const { user }                               = useUser();
-  const { items, clearPurchased, displayName } = useGroceryStore();
+  const { signOut }               = useAuth();
+  const { user }                  = useUser();
+
+  // ── Read displayName from store so edits in ProfileScreen reflect here ──
+  const { items, clearPurchased, displayName: storeDisplayName } = useGroceryStore();
 
   const stats = useMemo(() => {
     const purchased = items.filter((i) => i.purchased);
@@ -311,43 +362,18 @@ export default function InsightsScreen() {
     };
   }, [items]);
 
-  const doSignOut = async () => {
-    try {
-      if (Platform.OS === "web") {
-        await signOut({ redirectUrl: window.location.origin });
-      } else {
-        await signOut();
-      }
-    } catch (e) {
-      console.error("[InsightsScreen] signOut failed:", e);
-      Alert.alert("Error", "Could not log out. Please try again.");
-    }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      if (window.confirm("Are you sure you want to log out?")) doSignOut();
-    } else {
-      Alert.alert("Log Out", "Are you sure you want to log out?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Log Out", style: "destructive", onPress: doSignOut },
-      ]);
-    }
-  };
-
   const handleClearCompleted = () =>
     Alert.alert("Clear Completed", "Remove all completed items?", [
       { text: "Cancel", style: "cancel" },
       { text: "Clear", style: "destructive", onPress: () => clearPurchased() },
     ]);
 
-  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? "";
-  const clerkFallback =
-    user?.firstName
+  // ── Prefer storeDisplayName set by ProfileScreen, fall back to Clerk ──
+  const displayName =
+    storeDisplayName ||
+    (user?.firstName
       ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
-      : user?.username ?? primaryEmail.split("@")[0] ?? "User";
-
-  const shownName = displayName || clerkFallback;
+      : user?.username ?? "Username");
 
   const pieSlices: PieSlice[] = [
     { color: "#B0AEEE", value: stats.totalItems,     label: "Total Items" },
@@ -373,7 +399,7 @@ export default function InsightsScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
 
-          {/* ── PROFILE HERO CARD ─────────────────────────── */}
+          {/* ── HERO CARD ────────────────────────────────────── */}
           <View style={styles.heroCard}>
             <View style={styles.profileRow}>
               {user?.imageUrl ? (
@@ -385,7 +411,7 @@ export default function InsightsScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.greetingLabel}>WELCOME BACK</Text>
-                <Text style={styles.username} numberOfLines={1}>{shownName}</Text>
+                <Text style={styles.username} numberOfLines={1}>{displayName}</Text>
               </View>
             </View>
 
@@ -616,7 +642,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: colors.textPrimary,
   },
-
   heroStatRow: {
     flexDirection: "row",
     gap: 7,
@@ -631,10 +656,21 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
-  heroStatDot: { width: 7, height: 7, borderRadius: 3.5 },
-  heroStatText: { fontSize: 11, fontWeight: "700", color: colors.textPrimary },
-
-  heroProgressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  heroStatDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  heroStatText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  heroProgressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   heroProgressTrack: {
     flex: 1,
     height: 5,
@@ -642,7 +678,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
-  heroProgressFill: { height: "100%", backgroundColor: "#007A8A", borderRadius: 4 },
+  heroProgressFill: {
+    height: "100%",
+    backgroundColor: "#007A8A",
+    borderRadius: 4,
+  },
   heroProgressPct: {
     fontSize: 10,
     color: colors.textMuted,
@@ -660,16 +700,24 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.lg,
   },
-
   spendingRow: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
     gap: spacing.sm,
   },
-  spendingLeft:  { flex: 1.25, marginHorizontal: 0, marginTop: 0, padding: spacing.md },
-  spendingRight: { flex: 1,    marginHorizontal: 0, marginTop: 0, padding: spacing.md },
-
+  spendingLeft: {
+    flex: 1.25,
+    marginHorizontal: 0,
+    marginTop: 0,
+    padding: spacing.md,
+  },
+  spendingRight: {
+    flex: 1,
+    marginHorizontal: 0,
+    marginTop: 0,
+    padding: spacing.md,
+  },
   glassLabel: {
     fontSize: 9,
     fontWeight: "800",
@@ -685,12 +733,31 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     marginBottom: 2,
   },
-  monthBadge:   { marginBottom: spacing.xs },
-  monthName:    { fontSize: 17, fontWeight: "900", color: colors.white, letterSpacing: 0.3, lineHeight: 20 },
-  monthYear:    { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.55)" },
-  monthDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.15)", marginVertical: spacing.sm },
-  monthlyValue: { fontSize: 15, fontWeight: "900", color: colors.white, letterSpacing: -0.3, marginTop: 2 },
-
+  monthBadge: { marginBottom: spacing.xs },
+  monthName: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: colors.white,
+    letterSpacing: 0.3,
+    lineHeight: 20,
+  },
+  monthYear: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.55)",
+  },
+  monthDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    marginVertical: spacing.sm,
+  },
+  monthlyValue: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: colors.white,
+    letterSpacing: -0.3,
+    marginTop: 2,
+  },
   savingsChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -704,7 +771,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,255,133,0.25)",
   },
-  savingsText: { fontSize: 9, color: "#00FF85", fontWeight: "700" },
+  savingsText: {
+    fontSize: 9,
+    color: "#00FF85",
+    fontWeight: "700",
+  },
 
   sectionHeaderRow: {
     flexDirection: "row",
@@ -712,14 +783,45 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  sectionTitle:     { fontSize: 15, fontWeight: "900", color: colors.white, flex: 1 },
-  sectionBadge:     { backgroundColor: "rgba(255,255,255,0.22)", width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  sectionBadgeText: { fontSize: 11, color: colors.white, fontWeight: "800" },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: colors.white,
+    flex: 1,
+  },
+  sectionBadge: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionBadgeText: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: "800",
+  },
 
   topItemsList: { gap: spacing.sm },
-  topItemRow:   { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  rankNum:      { fontSize: 13, fontWeight: "900", width: 18, textAlign: "center" },
-  topItemImg:   { width: 36, height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
+  topItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  rankNum: {
+    fontSize: 13,
+    fontWeight: "900",
+    width: 18,
+    textAlign: "center",
+  },
+  topItemImg: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
   topItemImgPlaceholder: {
     width: 36,
     height: 36,
@@ -728,11 +830,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topItemInfo:     { flex: 1, gap: 4 },
-  topItemName:     { color: colors.white, fontWeight: "700", fontSize: 13 },
-  topItemBarTrack: { height: 5, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 3, overflow: "hidden" },
-  topItemBar:      { height: "100%", borderRadius: 3 },
-
+  topItemInfo: { flex: 1, gap: 4 },
+  topItemName: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  topItemBarTrack: {
+    height: 5,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  topItemBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
   qtyBadge: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: radius.pill,
@@ -741,9 +854,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  qtyBadgeText: { fontSize: 11, color: colors.white, fontWeight: "800" },
+  qtyBadgeText: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: "800",
+  },
 
-  emptyBox: { alignItems: "center", paddingVertical: spacing.lg, gap: spacing.sm },
+  emptyBox: {
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
   emptyIconWrap: {
     width: 64,
     height: 64,
@@ -753,14 +874,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  emptyTitle: { fontSize: 15, fontWeight: "800", color: colors.white },
-  emptyText:  { fontSize: typography.sm, color: "rgba(255,255,255,0.45)", textAlign: "center", lineHeight: 19 },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.white,
+  },
+  emptyText: {
+    fontSize: typography.sm,
+    color: "rgba(255,255,255,0.45)",
+    textAlign: "center",
+    lineHeight: 19,
+  },
 
-  stockRow:  { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+  stockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
+  },
   legendCol: { flex: 1, gap: 10 },
-  legendRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  legendLabel: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: "600", flex: 1 },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
+  },
+  legendLabel: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
+    flex: 1,
+  },
   legendCountBadge: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 6,
@@ -769,8 +917,11 @@ const styles = StyleSheet.create({
     minWidth: 26,
     alignItems: "center",
   },
-  legendCount: { fontSize: 12, color: colors.white, fontWeight: "800" },
-
+  legendCount: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: "800",
+  },
   clearBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -784,7 +935,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
     alignSelf: "flex-start",
   },
-  clearBtnText: { fontSize: 10, color: "#FF6B6B", fontWeight: "700" },
+  clearBtnText: {
+    fontSize: 10,
+    color: "#FF6B6B",
+    fontWeight: "700",
+  },
 
   feedbackBtn: {
     marginHorizontal: spacing.lg,
@@ -813,8 +968,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  feedbackTitle: { fontSize: typography.base, fontWeight: "800", color: colors.white, lineHeight: 18 },
-  feedbackSub:   { fontSize: 10, fontWeight: "500", color: "rgba(255,255,255,0.6)", lineHeight: 14 },
+  feedbackTitle: {
+    fontSize: typography.base,
+    fontWeight: "800",
+    color: colors.white,
+    lineHeight: 18,
+  },
+  feedbackSub: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
+    lineHeight: 14,
+  },
   feedbackArrow: {
     width: 28,
     height: 28,
