@@ -18,6 +18,7 @@ function getIcon(routeName: string, focused: boolean): IconName {
   if (routeName === "index")    return focused ? "list"       : "list-outline";
   if (routeName === "planner")  return focused ? "add-circle" : "add-circle-outline";
   if (routeName === "insights") return focused ? "bar-chart"  : "bar-chart-outline";
+  if (routeName === "profile")  return focused ? "person"     : "person-outline"; // ✅ FIXED
   return "ellipse-outline";
 }
 
@@ -90,6 +91,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index"    options={{ title: "List" }} />
       <Tabs.Screen name="planner"  options={{ title: "Planner" }} />
       <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+      <Tabs.Screen name="profile"  options={{ title: "Profile" }} />
     </Tabs>
   );
 }

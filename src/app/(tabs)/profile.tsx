@@ -63,7 +63,7 @@ const FIELD_CONFIGS: FieldConfig[] = [
   {
     key: "phone",
     label: "Phone Number",
-    placeholder: "Your phone number",
+    placeholder: "11-digit phone number (e.g. 09XXXXXXXXX)",
     keyboardType: "phone-pad",
   },
 ];
@@ -91,6 +91,17 @@ interface EditModalProps {
 
 function EditModal({ visible, field, value, onChange, onSave, onCancel }: EditModalProps) {
   if (!field) return null;
+
+  // ✅ FIX: Phone field — strip non-digits and limit to 11 characters
+  const handleChangeText = (text: string) => {
+    if (field.key === "phone") {
+      const digitsOnly = text.replace(/[^0-9]/g, "").slice(0, 11);
+      onChange(digitsOnly);
+    } else {
+      onChange(text);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -106,7 +117,7 @@ function EditModal({ visible, field, value, onChange, onSave, onCancel }: EditMo
             <TextInput
               style={styles.editInput}
               value={value}
-              onChangeText={onChange}
+              onChangeText={handleChangeText}
               placeholder={field.placeholder}
               placeholderTextColor="rgba(0,0,0,0.3)"
               keyboardType={field.keyboardType ?? "default"}
@@ -114,8 +125,18 @@ function EditModal({ visible, field, value, onChange, onSave, onCancel }: EditMo
               autoFocus
               returnKeyType="done"
               onSubmitEditing={onSave}
+              // ✅ FIX: Enforce max length of 11 for phone
+              maxLength={field.key === "phone" ? 11 : undefined}
             />
           </View>
+
+          {/* ✅ FIX: Show character counter hint for phone */}
+          {field.key === "phone" && (
+            <Text style={styles.phoneHint}>
+              {value.length}/11 digits
+            </Text>
+          )}
+
           <View style={styles.editModalBtns}>
             <TouchableOpacity
               style={styles.editCancelBtn}
@@ -220,10 +241,23 @@ export default function ProfileScreen() {
   const handleSave = async () => {
     if (!editingField) return;
     const trimmed = editValue.trim();
+
     if (!trimmed) {
       Alert.alert("Invalid", `${editingField.label} cannot be empty.`);
       return;
     }
+
+    // ✅ FIX: Phone number validation — must be exactly 11 digits, numbers only
+    if (editingField.key === "phone") {
+      if (!/^\d{11}$/.test(trimmed)) {
+        Alert.alert(
+          "Invalid Phone Number",
+          "Phone number must be exactly 11 digits (numbers only).\nExample: 09XXXXXXXXX"
+        );
+        return;
+      }
+    }
+
     try {
       if (editingField.key === "name") {
         const parts     = trimmed.split(" ");
@@ -236,6 +270,7 @@ export default function ProfileScreen() {
     } catch {
       // Silently ignore Clerk update errors
     }
+
     setProfileData((prev) => ({ ...prev, [editingField.key]: trimmed }));
     if (editingField.key === "name" || editingField.key === "username") {
       setDisplayName(trimmed);
@@ -857,7 +892,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#C6E7EC",
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
     height: 46,
     justifyContent: "center",
   },
@@ -867,6 +902,17 @@ const styles = StyleSheet.create({
     fontSize: typography.base,
     height: 46,
   },
+
+  // ✅ NEW: Phone digit counter hint
+  phoneHint: {
+    fontSize: 11,
+    color: "rgba(0,130,150,0.6)",
+    fontWeight: "600",
+    textAlign: "right",
+    marginBottom: spacing.md,
+    marginTop: 2,
+  },
+
   editModalBtns: {
     flexDirection: "row",
     gap: spacing.sm,
